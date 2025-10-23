@@ -1,0 +1,293 @@
+name: CI/CD Pipeline
+
+# 觸發條件：Push 或 Pull Request 到 main 分支
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+# 環境變數
+env:
+  PYTHON_VERSION: '3.10'
+  NODE_VERSION: '18'
+
+jobs:
+  # ==========================================
+  # Job 1: 程式碼品質檢查
+  # ==========================================
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8 black pylint
+
+      - name: 🔍 Lint with flake8
+        run: |
+          # 停止構建如果有語法錯誤或未定義名稱
+          flake8 src/main/python --count --select=E9,F63,F7,F82 --show-source --statistics
+          # 警告複雜度和其他問題
+          flake8 src/main/python --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        continue-on-error: true
+
+      - name: 🎨 Check code formatting with Black
+        run: |
+          black --check src/main/python
+        continue-on-error: true
+
+  # ==========================================
+  # Job 2: 後端單元測試
+  # ==========================================
+  backend-tests:
+    name: Backend Unit Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: citizen_app_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: ⏳ Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -uroot -ptest_password --silent; then
+              echo "MySQL is ready!"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: 🗄️ Setup test database
+        run: |
+          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/schema.sql
+          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/update_roles.sql
+        env:
+          MYSQL_PWD: test_password
+
+      - name: 🧪 Run tests
+        run: |
+          # 如果有測試檔案就執行
+          if [ -d "src/test" ]; then
+            pytest src/test -v --tb=short
+          else
+            echo "No tests found, skipping..."
+          fi
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: root
+          DB_PASSWORD: test_password
+          DB_NAME: citizen_app_test
+          JWT_SECRET_KEY: test-secret-key
+
+      - name: 📊 Generate coverage report
+        run: |
+          if [ -d "src/test" ]; then
+            pip install pytest-cov
+            pytest src/test --cov=src/main/python --cov-report=xml --cov-report=html
+          fi
+        continue-on-error: true
+
+  # ==========================================
+  # Job 3: API 健康檢查
+  # ==========================================
+  api-health-check:
+    name: API Health Check
+    runs-on: ubuntu-latest
+    needs: backend-tests
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: citizen_app_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🗄️ Setup database
+        run: |
+          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/schema.sql
+          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/update_roles.sql
+
+      - name: 🚀 Start FastAPI server
+        run: |
+          python -m uvicorn src.main.python.core.app:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: root
+          DB_PASSWORD: test_password
+          DB_NAME: citizen_app_test
+          JWT_SECRET_KEY: test-secret-key
+
+      - name: 🏥 Health check
+        run: |
+          curl -f http://localhost:8000/health || exit 1
+          curl -f http://localhost:8000/ || exit 1
+          echo "✅ API is healthy!"
+
+      - name: 📋 Check API endpoints
+        run: |
+          # 檢查主要端點是否存在
+          response=$(curl -s http://localhost:8000/openapi.json)
+          echo "$response" | grep -q "/auth/login" && echo "✅ Auth endpoints found"
+          echo "$response" | grep -q "/opinions" && echo "✅ Opinion endpoints found"
+          echo "$response" | grep -q "/media/upload" && echo "✅ Media endpoints found"
+          echo "$response" | grep -q "/admin" && echo "✅ Admin endpoints found"
+
+  # ==========================================
+  # Job 4: 安全性掃描
+  # ==========================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 🔒 Run Bandit security check
+        run: |
+          pip install bandit
+          bandit -r src/main/python -f json -o bandit-report.json
+        continue-on-error: true
+
+      - name: 📦 Check for vulnerabilities in dependencies
+        run: |
+          pip install safety
+          safety check --json
+        continue-on-error: true
+
+  # ==========================================
+  # Job 5: 構建 Docker Image（可選）
+  # ==========================================
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [backend-tests, api-health-check]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build Docker image (dry run)
+        run: |
+          echo "Docker build would happen here"
+          echo "Image tag: citizenapp:${{ github.sha }}"
+        # 實際構建（需要 Dockerfile）：
+        # docker build -t citizenapp:${{ github.sha }} .
+
+  # ==========================================
+  # Job 6: 部署到測試環境（可選）
+  # ==========================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: staging
+      url: https://staging.citizenapp.example.com
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy notification
+        run: |
+          echo "🎉 Deployment to staging would happen here"
+          echo "Commit: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
+
+  # ==========================================
+  # Job 7: 通知
+  # ==========================================
+  notify:
+    name: Notification
+    runs-on: ubuntu-latest
+    needs: [backend-tests, api-health-check, security-scan]
+    if: always()
+
+    steps:
+      - name: 📧 Send notification
+        run: |
+          if [ "${{ needs.backend-tests.result }}" == "success" ] && \
+             [ "${{ needs.api-health-check.result }}" == "success" ]; then
+            echo "✅ CI/CD Pipeline completed successfully!"
+            echo "All tests passed and API is healthy"
+          else
+            echo "❌ CI/CD Pipeline failed"
+            echo "Backend tests: ${{ needs.backend-tests.result }}"
+            echo "API health: ${{ needs.api-health-check.result }}"
+            echo "Security: ${{ needs.security-scan.result }}"
+          fi

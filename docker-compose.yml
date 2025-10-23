@@ -1,0 +1,96 @@
+version: '3.8'
+
+# Citizen Urban Planning Participation System
+# Docker Compose for local development and testing
+
+services:
+  # ==========================================
+  # MySQL Database
+  # ==========================================
+  mysql:
+    image: mysql:8.0
+    container_name: citizenapp-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-e20040731}
+      MYSQL_DATABASE: ${DB_NAME:-citizen_app}
+      MYSQL_USER: ${DB_USER:-citizenapp}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-e20040731}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./src/main/resources/config/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./src/main/resources/config/update_roles.sql:/docker-entrypoint-initdb.d/02-update_roles.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - citizenapp-network
+
+  # ==========================================
+  # FastAPI Backend
+  # ==========================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: citizenapp-backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-e20040731}
+      DB_NAME: ${DB_NAME:-citizen_app}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./src:/app/src
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - citizenapp-network
+
+  # ==========================================
+  # Nginx Reverse Proxy (Optional)
+  # ==========================================
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: citizenapp-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - citizenapp-network
+
+# ==========================================
+# Volumes
+# ==========================================
+volumes:
+  mysql_data:
+    driver: local
+
+# ==========================================
+# Networks
+# ==========================================
+networks:
+  citizenapp-network:
+    driver: bridge
