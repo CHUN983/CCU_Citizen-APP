@@ -4,7 +4,7 @@ Main FastAPI application for Citizen Urban Planning Participation System
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from ..api import auth, opinions, notifications, moderation
+from ..api import auth, opinions, notifications, moderation, media
 
 # Create FastAPI app
 app = FastAPI(
@@ -29,6 +29,7 @@ app.include_router(auth.router)
 app.include_router(opinions.router)
 app.include_router(notifications.router)
 app.include_router(moderation.router)
+app.include_router(media.router)
 
 
 @app.get("/")

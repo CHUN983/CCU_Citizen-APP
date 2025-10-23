@@ -114,3 +114,113 @@ def get_user_from_token(token: str) -> Optional[dict]:
         "username": username,
         "role": role
     }
+
+
+# Permission dependencies
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer()
+
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Get current authenticated user from JWT token
+    Required for all protected endpoints
+    """
+    from ..models.user import User
+    from ..utils.database import get_db_connection
+
+    token = credentials.credentials
+    user_data = get_user_from_token(token)
+
+    if user_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Get full user data from database
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            "SELECT * FROM users WHERE id = %s AND is_active = TRUE",
+            (user_data["user_id"],)
+        )
+        user_row = cursor.fetchone()
+
+        if not user_row:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found or inactive"
+            )
+
+        return User(**user_row)
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+async def get_current_active_user(current_user = Depends(get_current_user)):
+    """
+    Get current active user
+    Alias for get_current_user for compatibility
+    """
+    return current_user
+
+
+async def require_admin(current_user = Depends(get_current_user)):
+    """
+    Require admin role
+    Use this dependency for admin-only endpoints
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+    return current_user
+
+
+async def require_moderator(current_user = Depends(get_current_user)):
+    """
+    Require moderator or admin role
+    Use this dependency for moderation endpoints
+    """
+    if current_user.role not in ["admin", "moderator", "government_staff"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Moderator or admin privileges required"
+        )
+    return current_user
+
+
+async def require_government_staff(current_user = Depends(get_current_user)):
+    """
+    Require government staff, moderator, or admin role
+    Use this dependency for government staff endpoints
+    """
+    if current_user.role not in ["admin", "moderator", "government_staff"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Government staff privileges required"
+        )
+    return current_user
+
+
+def check_permission(user_role: str, required_roles: list) -> bool:
+    """
+    Check if user role has required permissions
+
+    Args:
+        user_role: User's current role
+        required_roles: List of roles that are allowed
+
+    Returns:
+        True if user has permission, False otherwise
+    """
+    return user_role in required_roles

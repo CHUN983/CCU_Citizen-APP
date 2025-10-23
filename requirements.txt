@@ -17,6 +17,9 @@ python-multipart==0.0.6
 # CORS
 python-dotenv==1.0.0
 
+# Media Processing
+Pillow==10.2.0
+
 # Development
 pytest==7.4.4
 pytest-asyncio==0.23.3

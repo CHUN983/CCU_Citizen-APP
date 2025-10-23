@@ -9,10 +9,17 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 class UserRole(str, Enum):
-    """User role enumeration"""
+    """
+    User role enumeration - 4-tier permission system
+    - citizen: 市民 (一般用戶，可發表意見)
+    - government_staff: 行政人員 (政府相關人員，可審核與合併意見)
+    - moderator: 版主 (版面管理員)
+    - admin: 管理員 (系統管理員，最高權限)
+    """
     CITIZEN = "citizen"
-    ADMIN = "admin"
+    GOVERNMENT_STAFF = "government_staff"
     MODERATOR = "moderator"
+    ADMIN = "admin"
 
 
 class UserBase(BaseModel):
