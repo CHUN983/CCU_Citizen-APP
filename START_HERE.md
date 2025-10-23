@@ -1,6 +1,42 @@
 # 🚀 專案啟動指南 (Quick Start Guide)
 
-## 第一步：安裝必要軟體
+---
+
+## 🔥 每次啟動專案的簡易流程（已安裝完成後）
+
+### 方法一：一鍵啟動（最簡單）
+
+```bash
+cd /root/project/citizenApp
+sudo service mysql start
+./setup_and_run.sh
+```
+
+### 方法二：手動啟動（更多控制）
+
+```bash
+# 1. 啟動 MySQL (WSL2 重啟後需要)
+sudo service mysql start
+
+# 2. 進入專案目錄並啟動虛擬環境
+cd /root/project/citizenApp
+source venv/bin/activate
+
+# 3. 啟動 FastAPI 伺服器
+python -m uvicorn src.main.python.core.app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 訪問應用
+
+- **API 主頁**: http://localhost:8000
+- **互動式文件**: http://localhost:8000/api/docs ⭐ 推薦
+- **ReDoc 文件**: http://localhost:8000/api/redoc
+
+---
+
+## 📋 首次安裝流程
+
+### 第一步：安裝必要軟體
 
 ### 1. 確認 Python 版本
 ```bash
