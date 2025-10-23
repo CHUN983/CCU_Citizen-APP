@@ -1,0 +1,325 @@
+<template>
+  <div class="dashboard-container">
+    <el-container>
+      <el-aside width="200px">
+        <div class="logo">
+          <h3>管理後台</h3>
+        </div>
+        <el-menu
+          default-active="/opinions"
+          router
+          background-color="#304156"
+          text-color="#fff"
+          active-text-color="#ffd04b"
+        >
+          <el-menu-item index="/dashboard">
+            <el-icon><Grid /></el-icon>
+            <span>儀表板</span>
+          </el-menu-item>
+          <el-menu-item index="/opinions">
+            <el-icon><Document /></el-icon>
+            <span>意見管理</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+
+      <el-container>
+        <el-header>
+          <div class="header-content">
+            <div>
+              <el-button @click="$router.back()">
+                <el-icon><ArrowLeft /></el-icon>
+                返回
+              </el-button>
+              <span style="margin-left: 20px; font-size: 20px; font-weight: bold;">
+                意見詳情
+              </span>
+            </div>
+            <div class="user-info">
+              <span>{{ userStore.userInfo?.username || '管理員' }}</span>
+              <el-button type="danger" size="small" @click="handleLogout">
+                登出
+              </el-button>
+            </div>
+          </div>
+        </el-header>
+
+        <el-main v-loading="loading">
+          <el-card v-if="opinion" shadow="never">
+            <!-- 意見資訊 -->
+            <div class="opinion-header">
+              <h2>{{ opinion.title }}</h2>
+              <el-tag :type="getStatusType(opinion.status)" size="large">
+                {{ getStatusText(opinion.status) }}
+              </el-tag>
+            </div>
+
+            <el-descriptions :column="2" border class="opinion-info">
+              <el-descriptions-item label="意見 ID">{{ opinion.id }}</el-descriptions-item>
+              <el-descriptions-item label="發表者">{{ opinion.username }}</el-descriptions-item>
+              <el-descriptions-item label="地區">{{ opinion.region || '無' }}</el-descriptions-item>
+              <el-descriptions-item label="狀態">
+                <el-tag :type="getStatusType(opinion.status)">
+                  {{ getStatusText(opinion.status) }}
+                </el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="票數">{{ opinion.vote_count }}</el-descriptions-item>
+              <el-descriptions-item label="留言數">{{ opinion.comment_count }}</el-descriptions-item>
+              <el-descriptions-item label="建立時間">
+                {{ formatDate(opinion.created_at) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="更新時間">
+                {{ formatDate(opinion.updated_at) }}
+              </el-descriptions-item>
+            </el-descriptions>
+
+            <!-- 意見內容 -->
+            <div class="opinion-content">
+              <h3>意見內容</h3>
+              <p>{{ opinion.content }}</p>
+            </div>
+
+            <!-- 媒體附件 -->
+            <div v-if="opinion.media && opinion.media.length > 0" class="opinion-media">
+              <h3>附件</h3>
+              <el-image
+                v-for="media in opinion.media"
+                :key="media.id"
+                :src="`http://localhost:8000${media.file_path}`"
+                :preview-src-list="opinion.media.map(m => `http://localhost:8000${m.file_path}`)"
+                fit="cover"
+                style="width: 200px; height: 200px; margin-right: 10px;"
+              />
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="opinion-actions">
+              <el-button
+                v-if="opinion.status === 'pending'"
+                type="success"
+                size="large"
+                @click="handleApprove"
+              >
+                <el-icon><Check /></el-icon>
+                核准意見
+              </el-button>
+              <el-button
+                v-if="opinion.status === 'pending'"
+                type="danger"
+                size="large"
+                @click="handleReject"
+              >
+                <el-icon><Close /></el-icon>
+                拒絕意見
+              </el-button>
+            </div>
+          </el-card>
+        </el-main>
+      </el-container>
+    </el-container>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Grid, Document, ArrowLeft, Check, Close } from '@element-plus/icons-vue'
+import { useUserStore } from '../../store/user'
+import { opinionAPI } from '../../api'
+
+const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+
+const loading = ref(false)
+const opinion = ref(null)
+
+const fetchOpinionDetail = async () => {
+  loading.value = true
+  try {
+    const data = await opinionAPI.getOpinionDetail(route.params.id)
+    opinion.value = data
+  } catch (error) {
+    console.error('Failed to fetch opinion detail:', error)
+    ElMessage.error('載入失敗')
+    router.back()
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleApprove = async () => {
+  try {
+    await ElMessageBox.confirm('確定要核准這個意見嗎？', '確認', {
+      confirmButtonText: '確定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    await opinionAPI.approveOpinion(opinion.value.id)
+    ElMessage.success('核准成功！')
+    await fetchOpinionDetail()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Approve failed:', error)
+    }
+  }
+}
+
+const handleReject = async () => {
+  try {
+    await ElMessageBox.confirm('確定要拒絕這個意見嗎？', '確認', {
+      confirmButtonText: '確定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    await opinionAPI.rejectOpinion(opinion.value.id)
+    ElMessage.success('已拒絕')
+    await fetchOpinionDetail()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Reject failed:', error)
+    }
+  }
+}
+
+const getStatusType = (status) => {
+  const types = {
+    draft: 'info',
+    pending: 'warning',
+    approved: 'success',
+    rejected: 'danger',
+    resolved: 'primary'
+  }
+  return types[status] || 'info'
+}
+
+const getStatusText = (status) => {
+  const texts = {
+    draft: '草稿',
+    pending: '待審核',
+    approved: '已核准',
+    rejected: '已拒絕',
+    resolved: '已解決'
+  }
+  return texts[status] || status
+}
+
+const formatDate = (dateString) => {
+  return new Date(dateString).toLocaleString('zh-TW')
+}
+
+const handleLogout = () => {
+  ElMessageBox.confirm('確定要登出嗎？', '提示', {
+    confirmButtonText: '確定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    userStore.logout()
+    router.push('/login')
+    ElMessage.success('已登出')
+  }).catch(() => {})
+}
+
+onMounted(() => {
+  fetchOpinionDetail()
+})
+</script>
+
+<style scoped>
+.dashboard-container {
+  height: 100vh;
+}
+
+.logo {
+  padding: 20px;
+  text-align: center;
+  background-color: #2b3a4b;
+  color: #fff;
+}
+
+.logo h3 {
+  margin: 0;
+}
+
+.el-aside {
+  background-color: #304156;
+  height: 100vh;
+}
+
+.el-header {
+  background-color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  display: flex;
+  align-items: center;
+}
+
+.header-content {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.el-main {
+  background-color: #f0f2f5;
+  padding: 20px;
+}
+
+.opinion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.opinion-header h2 {
+  margin: 0;
+}
+
+.opinion-info {
+  margin-bottom: 20px;
+}
+
+.opinion-content {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.opinion-content h3 {
+  margin-top: 0;
+}
+
+.opinion-content p {
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.opinion-media {
+  margin: 20px 0;
+}
+
+.opinion-media h3 {
+  margin-bottom: 10px;
+}
+
+.opinion-actions {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 10px;
+}
+</style>

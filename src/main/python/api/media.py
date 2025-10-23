@@ -10,9 +10,9 @@ from typing import List
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import FileResponse
 from PIL import Image
-from ..models.opinion import OpinionMedia, MediaType
-from ..utils.security import get_current_user
-from ..models.user import User
+from models.opinion import OpinionMedia, MediaType
+from utils.security import get_current_user
+from models.user import User
 
 router = APIRouter(prefix="/media", tags=["media"])
 

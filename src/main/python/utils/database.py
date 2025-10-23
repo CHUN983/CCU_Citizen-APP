@@ -4,7 +4,7 @@ Database connection and utilities
 
 import os
 from contextlib import contextmanager
-from typing import Generator
+from typing import Generator, Optional
 import mysql.connector
 from mysql.connector import pooling
 from mysql.connector.pooling import PooledMySQLConnection
@@ -39,6 +39,20 @@ connection_pool = pooling.MySQLConnectionPool(
     collation='utf8mb4_unicode_ci'
 )
 
+# 測試用連接池 (用於測試時覆蓋)
+_test_connection_pool: Optional[pooling.MySQLConnectionPool] = None
+
+
+def set_test_connection_pool(pool: Optional[pooling.MySQLConnectionPool]):
+    """設置測試用連接池 (僅供測試使用)"""
+    global _test_connection_pool
+    _test_connection_pool = pool
+
+
+def _get_connection_pool() -> pooling.MySQLConnectionPool:
+    """獲取當前連接池 (測試模式下返回測試連接池)"""
+    return _test_connection_pool if _test_connection_pool is not None else connection_pool
+
 
 @contextmanager
 def get_db_connection() -> Generator[PooledMySQLConnection, None, None]:
@@ -50,7 +64,8 @@ def get_db_connection() -> Generator[PooledMySQLConnection, None, None]:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM users")
     """
-    connection = connection_pool.get_connection()
+    pool = _get_connection_pool()
+    connection = pool.get_connection()
     try:
         yield connection
     finally:

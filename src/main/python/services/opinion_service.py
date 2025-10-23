@@ -3,15 +3,15 @@ Opinion service for managing citizen submissions
 """
 
 from typing import List, Optional
-from ..models.opinion import (
+from models.opinion import (
     Opinion, OpinionCreate, OpinionUpdate, OpinionWithUser,
     OpinionList, OpinionStatus
 )
-from ..models.comment import Comment, CommentCreate
-from ..models.vote import Vote, VoteCreate
-from ..models.notification import NotificationCreate, NotificationType
-from ..utils.database import get_db_cursor
-from .notification_service import NotificationService
+from models.comment import Comment, CommentCreate
+from models.vote import Vote, VoteCreate
+from models.notification import NotificationCreate, NotificationType
+from utils.database import get_db_cursor
+from services.notification_service import NotificationService
 
 
 class OpinionService:

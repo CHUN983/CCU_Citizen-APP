@@ -4,11 +4,11 @@ Opinion API routes
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
-from ..models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus
-from ..models.comment import Comment, CommentCreate
-from ..models.vote import VoteCreate
-from ..services.opinion_service import OpinionService
-from .auth import get_current_user
+from models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus
+from models.comment import Comment, CommentCreate
+from models.vote import VoteCreate
+from services.opinion_service import OpinionService
+from api.auth import get_current_user
 
 router = APIRouter(prefix="/opinions", tags=["Opinions"])
 

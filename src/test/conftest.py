@@ -6,67 +6,220 @@ Pytest 配置文件 - 共用 fixtures 和測試工具
 
 import pytest
 import asyncio
-from typing import Generator, AsyncGenerator
+from typing import Generator
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
-
-# 導入應用程式和資料庫模型
+import mysql.connector
+from mysql.connector import pooling
+import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
 
 # 添加專案根目錄到 Python 路徑
 project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root / "src" / "main" / "python"))
+python_src = project_root / "src" / "main" / "python"
+
+# 載入 .env 檔案
+load_dotenv(project_root / ".env")
+
+# 將 Python 源碼目錄加入路徑
+if str(python_src) not in sys.path:
+    sys.path.insert(0, str(python_src))
+
+# 設置 PYTHONPATH 環境變數以支持相對導入
+os.environ['PYTHONPATH'] = str(python_src) + os.pathsep + os.environ.get('PYTHONPATH', '')
 
 
 # ==================== 資料庫 Fixtures ====================
 
+# 測試資料庫配置 (使用 production 的密碼，但使用不同的資料庫名稱)
+TEST_DB_CONFIG = {
+    "host": os.getenv("TEST_DB_HOST", os.getenv("DB_HOST", "localhost")),
+    "port": int(os.getenv("TEST_DB_PORT", os.getenv("DB_PORT", "3306"))),
+    "user": os.getenv("TEST_DB_USER", os.getenv("DB_USER", "root")),
+    "password": os.getenv("TEST_DB_PASSWORD", os.getenv("DB_PASSWORD", "")),
+    "database": os.getenv("TEST_DB_NAME", "citizen_app_test"),
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_unicode_ci"
+}
+
+
 @pytest.fixture(scope="session")
-def test_db_engine():
+def test_db_connection_pool():
     """
-    建立測試資料庫引擎 (使用 SQLite in-memory)
+    建立測試資料庫連接池
     作用域: session - 整個測試會話只建立一次
     """
-    from utils.database import Base
+    from utils.database import set_test_connection_pool
 
-    # 使用記憶體資料庫進行測試
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+    # 首先連接到 MySQL server (不指定資料庫) 以建立測試資料庫
+    try:
+        conn = mysql.connector.connect(
+            host=TEST_DB_CONFIG["host"],
+            port=TEST_DB_CONFIG["port"],
+            user=TEST_DB_CONFIG["user"],
+            password=TEST_DB_CONFIG["password"]
+        )
+        cursor = conn.cursor()
+
+        # 建立測試資料庫
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {TEST_DB_CONFIG['database']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # 重新連接到測試資料庫
+        conn = mysql.connector.connect(
+            host=TEST_DB_CONFIG["host"],
+            port=TEST_DB_CONFIG["port"],
+            user=TEST_DB_CONFIG["user"],
+            password=TEST_DB_CONFIG["password"],
+            database=TEST_DB_CONFIG["database"]  # 直接連接到測試資料庫
+        )
+        cursor = conn.cursor()
+
+        # 讀取並執行 schema
+        schema_file = project_root / "src/main/resources/config/schema.sql"
+        with open(schema_file, 'r', encoding='utf-8') as f:
+            schema_sql = f.read()
+
+        # 分割並執行每個 SQL 語句
+        statements = [s.strip() for s in schema_sql.split(';') if s.strip()]
+        for statement in statements:
+            if statement and not statement.startswith('--'):
+                try:
+                    cursor.execute(statement)
+                except mysql.connector.Error as e:
+                    # 忽略 "already exists" 和 "Duplicate entry" 錯誤
+                    if "already exists" not in str(e) and "Duplicate entry" not in str(e):
+                        print(f"Warning executing statement: {e}")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    except mysql.connector.Error as e:
+        print(f"Error setting up test database: {e}")
+        raise
+
+    # 建立連接池
+    pool = pooling.MySQLConnectionPool(
+        pool_name="test_pool",
+        pool_size=5,
+        pool_reset_session=True,
+        **TEST_DB_CONFIG
     )
 
-    # 建立所有資料表
-    Base.metadata.create_all(bind=engine)
+    # 設置為測試連接池 (這樣應用程式代碼會使用測試資料庫)
+    set_test_connection_pool(pool)
 
-    yield engine
+    yield pool
 
-    # 清理: 刪除所有資料表
-    Base.metadata.drop_all(bind=engine)
-    engine.dispose()
+    # 恢復為 production 連接池
+    set_test_connection_pool(None)
+
+    # 清理: 刪除測試資料庫
+    try:
+        conn = mysql.connector.connect(
+            host=TEST_DB_CONFIG["host"],
+            port=TEST_DB_CONFIG["port"],
+            user=TEST_DB_CONFIG["user"],
+            password=TEST_DB_CONFIG["password"]
+        )
+        cursor = conn.cursor()
+        cursor.execute(f"DROP DATABASE IF EXISTS {TEST_DB_CONFIG['database']}")
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except mysql.connector.Error as e:
+        print(f"Error cleaning up test database: {e}")
+
+
+@pytest.fixture(scope="function", autouse=True)
+def cleanup_test_data(test_db_connection_pool):
+    """
+    自動清理測試資料 (在每個測試前後執行)
+    """
+    def clean_tables():
+        connection = test_db_connection_pool.get_connection()
+        cursor = connection.cursor()
+
+        try:
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+            # 只清理資料，不刪除預設的 categories 和 admin 用戶
+            tables_to_clean = [
+                'opinion_history',
+                'subscriptions',
+                'notifications',
+                'opinion_tags',
+                'tags',
+                'collections',
+                'votes',
+                'comments',
+                'opinion_media',
+                'opinions'
+            ]
+            for table in tables_to_clean:
+                # 檢查表是否存在
+                cursor.execute(f"SHOW TABLES LIKE '{table}'")
+                if cursor.fetchone():
+                    cursor.execute(f"DELETE FROM {table}")
+
+            # 清理測試用戶 (保留預設的 admin 用戶)
+            cursor.execute("SHOW TABLES LIKE 'users'")
+            if cursor.fetchone():
+                cursor.execute("DELETE FROM users WHERE username != 'admin'")
+
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+            connection.commit()
+        except Exception as e:
+            # 忽略表不存在的錯誤
+            if "doesn't exist" not in str(e):
+                print(f"Error cleaning test data: {e}")
+            connection.rollback()
+        finally:
+            cursor.close()
+            connection.close()
+
+    # 測試前清理
+    clean_tables()
+
+    yield
+
+    # 測試後清理
+    clean_tables()
 
 
 @pytest.fixture(scope="function")
-def test_db_session(test_db_engine) -> Generator[Session, None, None]:
+def test_db_connection(test_db_connection_pool):
     """
-    建立測試資料庫 session
-    作用域: function - 每個測試函數都有獨立的 session
+    獲取測試資料庫連接
+    作用域: function - 每個測試函數都有獨立的連接
     """
-    TestingSessionLocal = sessionmaker(
-        autocommit=False,
-        autoflush=False,
-        bind=test_db_engine
-    )
+    connection = test_db_connection_pool.get_connection()
 
-    session = TestingSessionLocal()
+    yield connection
 
+    # 清理: 回滾並關閉連接
     try:
-        yield session
-    finally:
-        session.rollback()
-        session.close()
+        connection.rollback()
+    except:
+        pass
+    connection.close()
+
+
+@pytest.fixture(scope="function")
+def test_db_cursor(test_db_connection):
+    """
+    獲取測試資料庫游標
+    作用域: function - 每個測試函數都有獨立的游標
+    """
+    cursor = test_db_connection.cursor(dictionary=True)
+
+    yield cursor
+
+    # 清理
+    cursor.close()
 
 
 # ==================== FastAPI 應用 Fixtures ====================
@@ -127,45 +280,69 @@ def test_moderator_data():
 
 
 @pytest.fixture(scope="function")
-def create_test_user(test_db_session, test_user_data):
+def create_test_user(test_db_connection, test_user_data):
     """
     建立測試用戶並返回用戶物件
     """
-    from models.user import User
     from utils.security import hash_password
 
-    user = User(
-        username=test_user_data["username"],
-        email=test_user_data["email"],
-        password_hash=hash_password(test_user_data["password"]),
-        role=test_user_data["role"]
-    )
+    cursor = test_db_connection.cursor(dictionary=True)
 
-    test_db_session.add(user)
-    test_db_session.commit()
-    test_db_session.refresh(user)
+    # 插入用戶
+    insert_sql = """
+        INSERT INTO users (username, email, password_hash, role, is_active)
+        VALUES (%s, %s, %s, %s, %s)
+    """
+    cursor.execute(insert_sql, (
+        test_user_data["username"],
+        test_user_data["email"],
+        hash_password(test_user_data["password"]),
+        test_user_data["role"],
+        True
+    ))
+    test_db_connection.commit()
+
+    # 獲取插入的用戶 ID
+    user_id = cursor.lastrowid
+
+    # 查詢並返回用戶資料
+    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    user = cursor.fetchone()
+    cursor.close()
 
     return user
 
 
 @pytest.fixture(scope="function")
-def create_test_admin(test_db_session, test_admin_data):
+def create_test_admin(test_db_connection, test_admin_data):
     """
     建立測試管理員並返回用戶物件
     """
-    from models.user import User
     from utils.security import hash_password
 
-    admin = User(
-        username=test_admin_data["username"],
-        email=test_admin_data["email"],
-        password_hash=hash_password(test_admin_data["password"]),
-        role=test_admin_data["role"]
-    )
+    cursor = test_db_connection.cursor(dictionary=True)
 
-    test_db_session.add(admin)
-    test_db_session.commit()
-    test_db_session.refresh(admin)
+    # 插入管理員
+    insert_sql = """
+        INSERT INTO users (username, email, password_hash, role, is_active)
+        VALUES (%s, %s, %s, %s, %s)
+    """
+    cursor.execute(insert_sql, (
+        test_admin_data["username"],
+        test_admin_data["email"],
+        hash_password(test_admin_data["password"]),
+        test_admin_data["role"],
+        True
+    ))
+    test_db_connection.commit()
+
+    # 獲取插入的管理員 ID
+    admin_id = cursor.lastrowid
+
+    # 查詢並返回管理員資料
+    cursor.execute("SELECT * FROM users WHERE id = %s", (admin_id,))
+    admin = cursor.fetchone()
+    cursor.close()
 
     return admin
 
@@ -222,54 +399,71 @@ def test_opinion_data():
 
 
 @pytest.fixture(scope="function")
-def create_test_opinion(test_db_session, create_test_user, test_opinion_data):
+def create_test_opinion(test_db_connection, create_test_user, test_opinion_data):
     """
     建立測試意見並返回意見物件
     """
-    from models.opinion import Opinion
+    cursor = test_db_connection.cursor(dictionary=True)
 
-    opinion = Opinion(
-        title=test_opinion_data["title"],
-        content=test_opinion_data["content"],
-        user_id=create_test_user.id,
-        category_id=test_opinion_data["category_id"],
-        region=test_opinion_data["region"],
-        status="pending"
-    )
+    # 插入意見
+    insert_sql = """
+        INSERT INTO opinions (user_id, title, content, category_id, region, status)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """
+    cursor.execute(insert_sql, (
+        create_test_user["id"],
+        test_opinion_data["title"],
+        test_opinion_data["content"],
+        test_opinion_data["category_id"],
+        test_opinion_data["region"],
+        "pending"
+    ))
+    test_db_connection.commit()
 
-    test_db_session.add(opinion)
-    test_db_session.commit()
-    test_db_session.refresh(opinion)
+    # 獲取插入的意見 ID
+    opinion_id = cursor.lastrowid
+
+    # 查詢並返回意見資料
+    cursor.execute("SELECT * FROM opinions WHERE id = %s", (opinion_id,))
+    opinion = cursor.fetchone()
+    cursor.close()
 
     return opinion
 
 
 @pytest.fixture(scope="function")
-def create_multiple_opinions(test_db_session, create_test_user, test_opinion_data):
+def create_multiple_opinions(test_db_connection, create_test_user, test_opinion_data):
     """
     建立多個測試意見
     """
-    from models.opinion import Opinion
-
+    cursor = test_db_connection.cursor(dictionary=True)
     opinions = []
     statuses = ["draft", "pending", "approved", "rejected"]
 
+    insert_sql = """
+        INSERT INTO opinions (user_id, title, content, category_id, region, status)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """
+
     for i, status in enumerate(statuses):
-        opinion = Opinion(
-            title=f"{test_opinion_data['title']} {i+1}",
-            content=f"{test_opinion_data['content']} {i+1}",
-            user_id=create_test_user.id,
-            category_id=test_opinion_data["category_id"],
-            region=test_opinion_data["region"],
-            status=status
-        )
-        test_db_session.add(opinion)
-        opinions.append(opinion)
+        cursor.execute(insert_sql, (
+            create_test_user["id"],
+            f"{test_opinion_data['title']} {i+1}",
+            f"{test_opinion_data['content']} {i+1}",
+            test_opinion_data["category_id"],
+            test_opinion_data["region"],
+            status
+        ))
 
-    test_db_session.commit()
+    test_db_connection.commit()
 
-    for opinion in opinions:
-        test_db_session.refresh(opinion)
+    # 查詢並返回所有意見
+    cursor.execute(
+        "SELECT * FROM opinions WHERE user_id = %s ORDER BY id",
+        (create_test_user["id"],)
+    )
+    opinions = cursor.fetchall()
+    cursor.close()
 
     return opinions
 
@@ -277,19 +471,39 @@ def create_multiple_opinions(test_db_session, create_test_user, test_opinion_dat
 # ==================== 工具 Fixtures ====================
 
 @pytest.fixture(scope="function")
-def cleanup_db(test_db_session):
+def cleanup_db(test_db_connection):
     """
     測試後清理資料庫
     """
     yield
 
-    # 清理所有資料表
-    from utils.database import Base
+    # 清理所有資料表 (按照外鍵相依性順序)
+    cursor = test_db_connection.cursor()
+    tables = [
+        'opinion_history',
+        'subscriptions',
+        'notifications',
+        'opinion_tags',
+        'tags',
+        'collections',
+        'votes',
+        'comments',
+        'opinion_media',
+        'opinions',
+        'users'
+    ]
 
-    for table in reversed(Base.metadata.sorted_tables):
-        test_db_session.execute(table.delete())
-
-    test_db_session.commit()
+    try:
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+        for table in tables:
+            cursor.execute(f"DELETE FROM {table}")
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+        test_db_connection.commit()
+    except Exception as e:
+        print(f"Error cleaning up database: {e}")
+        test_db_connection.rollback()
+    finally:
+        cursor.close()
 
 
 # ==================== 異步測試支援 ====================
