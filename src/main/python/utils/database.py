@@ -8,6 +8,10 @@ from typing import Generator
 import mysql.connector
 from mysql.connector import pooling
 from mysql.connector.pooling import PooledMySQLConnection
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class DatabaseConfig:
