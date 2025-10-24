@@ -4,7 +4,7 @@ import axios from './axios'
 export const authAPI = {
   login: (data) => axios.post('/auth/login', data),
   register: (data) => axios.post('/auth/register', data),
-  getProfile: () => axios.get('/auth/profile')
+  getProfile: () => axios.get('/auth/me')
 }
 
 // Opinion APIs

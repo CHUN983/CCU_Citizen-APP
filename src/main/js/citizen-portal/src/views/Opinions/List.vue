@@ -149,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
 import { useOpinionStore } from '../../store/opinion'
@@ -250,6 +250,9 @@ const handleSizeChange = (size) => {
   fetchOpinions()
 }
 
+// Auto-refresh mechanism
+let refreshInterval = null
+
 onMounted(async () => {
   // Fetch categories
   try {
@@ -260,6 +263,19 @@ onMounted(async () => {
 
   // Fetch opinions
   await fetchOpinions()
+
+  // Set up auto-refresh every 30 seconds
+  refreshInterval = setInterval(() => {
+    fetchOpinions()
+  }, 30000) // 30 seconds
+})
+
+onUnmounted(() => {
+  // Clean up interval on component unmount
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+    refreshInterval = null
+  }
 })
 </script>
 
