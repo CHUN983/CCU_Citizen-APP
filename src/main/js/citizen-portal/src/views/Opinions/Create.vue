@@ -49,7 +49,7 @@
 
         <el-form-item label="位置">
           <el-input
-            v-model="form.location"
+            v-model="form.region"
             placeholder="請輸入相關位置（選填）"
             clearable
           >
@@ -139,7 +139,7 @@ const form = reactive({
   title: '',
   content: '',
   category_id: null,
-  location: '',
+  region: '',
   tags: []
 })
 
@@ -203,10 +203,11 @@ const handleSubmit = async () => {
         const submitData = {
           title: form.title,
           content: form.content,
-          category_id: form.category_id
+          category_id: form.category_id,
+          status: 'pending'  // 提交後進入待審核狀態
         }
 
-        if (form.location) submitData.location = form.location
+        if (form.region) submitData.region = form.region
         if (form.tags.length > 0) submitData.tags = form.tags
 
         await opinionStore.createOpinion(submitData)
