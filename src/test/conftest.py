@@ -14,6 +14,7 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
+from types import SimpleNamespace
 
 # 添加專案根目錄到 Python 路徑
 project_root = Path(__file__).parent.parent.parent
@@ -310,7 +311,8 @@ def create_test_user(test_db_connection, test_user_data):
     user = cursor.fetchone()
     cursor.close()
 
-    return user
+    # 將字典轉換為可以用屬性存取的物件
+    return SimpleNamespace(**user) if user else None
 
 
 @pytest.fixture(scope="function")
@@ -344,7 +346,8 @@ def create_test_admin(test_db_connection, test_admin_data):
     admin = cursor.fetchone()
     cursor.close()
 
-    return admin
+    # 將字典轉換為可以用屬性存取的物件
+    return SimpleNamespace(**admin) if admin else None
 
 
 @pytest.fixture(scope="function")
