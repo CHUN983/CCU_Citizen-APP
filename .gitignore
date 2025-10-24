@@ -60,6 +60,10 @@ logs/
 # Output files (use output/ directory instead)
 *.csv
 *.json
+!**/manifest.json
+!**/package.json
+!**/tsconfig.json
+!**/.vscode/*.json
 *.xlsx
 output/
 

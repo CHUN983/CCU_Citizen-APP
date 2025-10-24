@@ -11,12 +11,16 @@
         <Footer />
       </el-footer>
     </el-container>
+
+    <!-- PWA Install Prompt -->
+    <PWAInstallPrompt />
   </div>
 </template>
 
 <script setup>
 import Header from './components/Header.vue'
 import Footer from './components/Footer.vue'
+import PWAInstallPrompt from './components/PWAInstallPrompt.vue'
 </script>
 
 <style>
