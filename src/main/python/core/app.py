@@ -8,10 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 # 使用絕對導入以支持測試環境
 try:
     # 當作為模組導入時使用相對導入
-    from ..api import auth, opinions, notifications, moderation, media
+    from ..api import auth, opinions, notifications, moderation, media, categories
 except ImportError:
     # 當作為獨立腳本或測試時使用絕對導入
-    from api import auth, opinions, notifications, moderation, media
+    from api import auth, opinions, notifications, moderation, media, categories
 
 # Create FastAPI app
 app = FastAPI(
@@ -34,6 +34,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(opinions.router)
+app.include_router(categories.router)
 app.include_router(notifications.router)
 app.include_router(moderation.router)
 app.include_router(media.router)
