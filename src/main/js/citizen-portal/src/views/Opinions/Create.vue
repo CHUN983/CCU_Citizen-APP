@@ -231,7 +231,9 @@ onMounted(async () => {
     try {
       await opinionStore.fetchCategories()
     } catch (error) {
-      ElMessage.error('載入分類失敗')
+      console.error('Failed to fetch categories:', error)
+      ElMessage.error('載入分類失敗，請稍後再試')
+      // Don't block rendering on error
     }
   }
 })

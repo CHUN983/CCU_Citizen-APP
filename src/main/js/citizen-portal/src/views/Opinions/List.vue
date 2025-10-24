@@ -259,10 +259,16 @@ onMounted(async () => {
     await opinionStore.fetchCategories()
   } catch (error) {
     console.error('Failed to fetch categories:', error)
+    // Don't block rendering on error
   }
 
   // Fetch opinions
-  await fetchOpinions()
+  try {
+    await fetchOpinions()
+  } catch (error) {
+    console.error('Failed to fetch opinions:', error)
+    // Don't block rendering on error
+  }
 
   // Set up auto-refresh every 30 seconds
   refreshInterval = setInterval(() => {

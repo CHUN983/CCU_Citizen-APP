@@ -120,6 +120,8 @@ onMounted(async () => {
     recentOpinions.value = data.items || []
   } catch (error) {
     console.error('Failed to fetch recent opinions:', error)
+    // Don't block rendering on error
+    recentOpinions.value = []
   } finally {
     loading.value = false
   }

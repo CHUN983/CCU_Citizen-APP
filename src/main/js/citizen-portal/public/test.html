@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>診斷頁面 - Citizen Portal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #409eff;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #f0f9ff;
+            border-left: 4px solid #67c23a;
+        }
+        .error {
+            background: #fef0f0;
+            border-left: 4px solid #f56c6c;
+        }
+        button {
+            background: #409eff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #66b1ff;
+        }
+        pre {
+            background: #f4f4f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 市民端診斷頁面</h1>
+
+    <div class="test-section">
+        <h2>1. 基本連接測試</h2>
+        <div id="connection-status">測試中...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 後端 API 測試</h2>
+        <button onclick="testBackend()">測試後端健康檢查</button>
+        <button onclick="testOpinions()">測試意見列表 API</button>
+        <button onclick="testCategories()">測試分類 API</button>
+        <div id="api-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 前端路由測試</h2>
+        <button onclick="location.href='/test'">🔧 簡單測試頁 (NEW!)</button>
+        <button onclick="location.href='/'">首頁</button>
+        <button onclick="location.href='/opinions'">意見列表</button>
+        <button onclick="location.href='/login'">登入</button>
+        <div id="router-status"></div>
+        <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+            <strong>💡 提示：</strong>先點擊「簡單測試頁」確認 Vue 路由是否正常運作！
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 瀏覽器信息</h2>
+        <pre id="browser-info"></pre>
+    </div>
+
+    <script>
+        // 顯示連接狀態
+        document.getElementById('connection-status').innerHTML = `
+            <div class="status success">
+                ✅ 診斷頁面載入成功！<br>
+                當前時間：${new Date().toLocaleString('zh-TW')}<br>
+                前端服務：http://localhost:5174/<br>
+                後端服務：http://localhost:8000
+            </div>
+        `;
+
+        // 顯示瀏覽器信息
+        document.getElementById('browser-info').textContent = `
+瀏覽器：${navigator.userAgent}
+視窗大小：${window.innerWidth}x${window.innerHeight}
+語言：${navigator.language}
+        `;
+
+        // 測試後端健康檢查
+        async function testBackend() {
+            const status = document.getElementById('api-status');
+            status.innerHTML = '<div class="status">⏳ 測試後端健康檢查...</div>';
+
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                const data = await response.json();
+                status.innerHTML = `
+                    <div class="status success">
+                        ✅ 後端健康檢查成功！<br>
+                        狀態碼：${response.status}<br>
+                        回應：<pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                status.innerHTML = `
+                    <div class="status error">
+                        ❌ 後端健康檢查失敗！<br>
+                        錯誤：${error.message}<br>
+                        <strong>可能原因：</strong>
+                        <ul>
+                            <li>後端服務未啟動</li>
+                            <li>CORS 配置問題</li>
+                            <li>網絡連接問題</li>
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+
+        // 測試意見列表 API
+        async function testOpinions() {
+            const status = document.getElementById('api-status');
+            status.innerHTML = '<div class="status">⏳ 測試意見列表 API...</div>';
+
+            try {
+                const response = await fetch('http://localhost:8000/opinions?page=1&page_size=5');
+                const data = await response.json();
+                status.innerHTML = `
+                    <div class="status success">
+                        ✅ 意見列表 API 成功！<br>
+                        狀態碼：${response.status}<br>
+                        總數：${data.total}<br>
+                        意見數：${data.items ? data.items.length : 0}<br>
+                        回應：<pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                status.innerHTML = `
+                    <div class="status error">
+                        ❌ 意見列表 API 失敗！<br>
+                        錯誤：${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 測試分類 API
+        async function testCategories() {
+            const status = document.getElementById('api-status');
+            status.innerHTML = '<div class="status">⏳ 測試分類 API...</div>';
+
+            try {
+                const response = await fetch('http://localhost:8000/categories');
+                const data = await response.json();
+                status.innerHTML = `
+                    <div class="status success">
+                        ✅ 分類 API 成功！<br>
+                        狀態碼：${response.status}<br>
+                        總數：${data.total}<br>
+                        分類數：${data.categories ? data.categories.length : 0}<br>
+                        回應：<pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                status.innerHTML = `
+                    <div class="status error">
+                        ❌ 分類 API 失敗！<br>
+                        錯誤：${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 自動測試後端
+        window.addEventListener('load', () => {
+            setTimeout(testBackend, 1000);
+        });
+    </script>
+</body>
+</html>
