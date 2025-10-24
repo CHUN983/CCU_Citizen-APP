@@ -414,7 +414,7 @@ def create_test_opinion(test_db_connection, create_test_user, test_opinion_data)
         VALUES (%s, %s, %s, %s, %s, %s)
     """
     cursor.execute(insert_sql, (
-        create_test_user["id"],
+        create_test_user.id,  # 使用屬性存取而非字典語法
         test_opinion_data["title"],
         test_opinion_data["content"],
         test_opinion_data["category_id"],
@@ -431,7 +431,8 @@ def create_test_opinion(test_db_connection, create_test_user, test_opinion_data)
     opinion = cursor.fetchone()
     cursor.close()
 
-    return opinion
+    # 將字典轉換為可以用屬性存取的物件
+    return SimpleNamespace(**opinion) if opinion else None
 
 
 @pytest.fixture(scope="function")
@@ -450,7 +451,7 @@ def create_multiple_opinions(test_db_connection, create_test_user, test_opinion_
 
     for i, status in enumerate(statuses):
         cursor.execute(insert_sql, (
-            create_test_user["id"],
+            create_test_user.id,  # 使用屬性存取而非字典語法
             f"{test_opinion_data['title']} {i+1}",
             f"{test_opinion_data['content']} {i+1}",
             test_opinion_data["category_id"],
@@ -463,12 +464,13 @@ def create_multiple_opinions(test_db_connection, create_test_user, test_opinion_
     # 查詢並返回所有意見
     cursor.execute(
         "SELECT * FROM opinions WHERE user_id = %s ORDER BY id",
-        (create_test_user["id"],)
+        (create_test_user.id,)  # 使用屬性存取而非字典語法
     )
     opinions = cursor.fetchall()
     cursor.close()
 
-    return opinions
+    # 將字典列表轉換為 SimpleNamespace 列表
+    return [SimpleNamespace(**op) for op in opinions]
 
 
 # ==================== 工具 Fixtures ====================

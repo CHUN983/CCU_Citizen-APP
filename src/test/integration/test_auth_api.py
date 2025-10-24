@@ -373,25 +373,30 @@ class TestRoleBasedAccess:
         self,
         test_client: TestClient,
         test_moderator_data,
-        test_db_session
+        test_db_connection
     ):
         """
         測試審核員角色認證
         測試目標: 驗證審核員能夠登入並獲取正確角色
         優先級: High
         """
-        from models.user import User
         from utils.security import hash_password
 
-        # 建立審核員
-        moderator = User(
-            username=test_moderator_data["username"],
-            email=test_moderator_data["email"],
-            password_hash=hash_password(test_moderator_data["password"]),
-            role=test_moderator_data["role"]
-        )
-        test_db_session.add(moderator)
-        test_db_session.commit()
+        # 建立審核員（使用原生 SQL）
+        cursor = test_db_connection.cursor()
+        insert_sql = """
+            INSERT INTO users (username, email, password_hash, role, is_active)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        cursor.execute(insert_sql, (
+            test_moderator_data["username"],
+            test_moderator_data["email"],
+            hash_password(test_moderator_data["password"]),
+            test_moderator_data["role"],
+            True
+        ))
+        test_db_connection.commit()
+        cursor.close()
 
         # 審核員登入
         login_data = {
