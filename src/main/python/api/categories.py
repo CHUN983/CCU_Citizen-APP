@@ -13,7 +13,7 @@ async def get_categories():
     """Get all categories"""
     with get_db_cursor() as cursor:
         cursor.execute("""
-            SELECT id as category_id, name, description, created_at
+            SELECT id, name, description, created_at
             FROM categories
             ORDER BY name
         """)
@@ -31,7 +31,7 @@ async def get_category(category_id: int):
     """Get category by ID"""
     with get_db_cursor() as cursor:
         cursor.execute("""
-            SELECT id as category_id, name, description, created_at
+            SELECT id, name, description, created_at
             FROM categories
             WHERE id = %s
         """, (category_id,))

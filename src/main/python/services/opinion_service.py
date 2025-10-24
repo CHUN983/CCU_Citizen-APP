@@ -30,7 +30,7 @@ class OpinionService:
             cursor.execute(
                 query,
                 (user_id, opinion_data.title, opinion_data.content,
-                 opinion_data.category_id, opinion_data.status.value,
+                 opinion_data.category_id, opinion_data.status,
                  opinion_data.region, opinion_data.latitude,
                  opinion_data.longitude, opinion_data.is_public)
             )
@@ -45,7 +45,7 @@ class OpinionService:
             cursor.execute(
                 """INSERT INTO opinion_history (opinion_id, user_id, action, new_status)
                    VALUES (%s, %s, 'created', %s)""",
-                (opinion_id, user_id, opinion_data.status.value)
+                (opinion_id, user_id, opinion_data.status)
             )
 
             return OpinionService.get_opinion_by_id(opinion_id)

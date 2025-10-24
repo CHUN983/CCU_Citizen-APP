@@ -62,7 +62,7 @@ class OpinionBase(BaseModel):
 class OpinionCreate(OpinionBase):
     """Opinion creation model"""
     tags: Optional[List[str]] = []
-    status: OpinionStatus = OpinionStatus.DRAFT
+    status: str = "pending"  # Accept string status for easier frontend integration
 
 
 class OpinionUpdate(BaseModel):

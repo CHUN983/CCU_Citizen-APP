@@ -29,9 +29,9 @@
           <el-select v-model="form.category_id" placeholder="請選擇分類" style="width: 100%">
             <el-option
               v-for="category in categories"
-              :key="category.category_id"
+              :key="category.id"
               :label="category.name"
-              :value="category.category_id"
+              :value="category.id"
             />
           </el-select>
         </el-form-item>
