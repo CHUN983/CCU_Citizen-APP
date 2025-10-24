@@ -209,8 +209,8 @@ const formatDate = (dateString) => {
 const fetchOpinions = async () => {
   try {
     const params = {
-      skip: (currentPage.value - 1) * pageSize.value,
-      limit: pageSize.value
+      page: currentPage.value,
+      page_size: pageSize.value
     }
 
     if (filters.search) params.search = filters.search

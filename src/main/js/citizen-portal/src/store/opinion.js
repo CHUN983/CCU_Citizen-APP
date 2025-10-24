@@ -15,7 +15,7 @@ export const useOpinionStore = defineStore('opinion', {
       this.loading = true
       try {
         const data = await opinionAPI.getList(params)
-        this.opinions = data.opinions || []
+        this.opinions = data.items || []
         this.total = data.total || 0
         return data
       } catch (error) {

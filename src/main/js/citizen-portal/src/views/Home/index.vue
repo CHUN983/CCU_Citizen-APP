@@ -116,8 +116,8 @@ const getStatusText = (status) => {
 onMounted(async () => {
   loading.value = true
   try {
-    const data = await opinionStore.fetchOpinions({ limit: 5, status: 'approved' })
-    recentOpinions.value = data.opinions || []
+    const data = await opinionStore.fetchOpinions({ page: 1, page_size: 5, status: 'approved' })
+    recentOpinions.value = data.items || []
   } catch (error) {
     console.error('Failed to fetch recent opinions:', error)
   } finally {
