@@ -3,10 +3,10 @@ Moderation service for admin operations
 """
 
 from typing import Optional
-from models.opinion import OpinionStatus
-from models.notification import NotificationCreate, NotificationType
-from utils.database import get_db_cursor
-from services.notification_service import NotificationService
+from ..models.opinion import OpinionStatus
+from ..models.notification import NotificationCreate, NotificationType
+from ..utils.database import get_db_cursor
+from ..services.notification_service import NotificationService
 
 
 class ModerationService:

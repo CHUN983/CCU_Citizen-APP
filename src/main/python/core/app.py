@@ -11,7 +11,7 @@ try:
     from ..api import auth, opinions, notifications, moderation, media, categories
 except ImportError:
     # 當作為獨立腳本或測試時使用絕對導入
-    from api import auth, opinions, notifications, moderation, media, categories
+    from ..api import auth, opinions, notifications, moderation, media, categories
 
 # Create FastAPI app
 app = FastAPI(

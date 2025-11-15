@@ -4,9 +4,9 @@ Moderation API routes (admin only)
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from services.moderation_service import ModerationService
-from models.user import UserRole
-from api.auth import get_current_user
+from ..services.moderation_service import ModerationService
+from ..models.user import UserRole
+from ..api.auth import get_current_user
 
 router = APIRouter(prefix="/admin", tags=["Moderation"])
 
