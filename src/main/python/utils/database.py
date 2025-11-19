@@ -54,8 +54,8 @@ def _get_connection_pool() -> pooling.MySQLConnectionPool:
     return _test_connection_pool if _test_connection_pool is not None else connection_pool
 
 
-@contextmanager
-def get_db_connection() -> Generator[PooledMySQLConnection, None, None]:
+@contextmanager 
+def get_db_connection() -> Generator[PooledMySQLConnection, None, None]: #
     """
     Get database connection from pool
 

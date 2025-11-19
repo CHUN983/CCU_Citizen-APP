@@ -28,9 +28,19 @@ export const useOpinionStore = defineStore('opinion', {
     async fetchOpinionById(id) {
       this.loading = true
       try {
-        const data = await opinionAPI.getById(id)
-        this.currentOpinion = data
-        return data
+          const [opinionData, voteStats] = await Promise.all([
+            opinionAPI.getById(id),
+            opinionAPI.getVotes(id)
+          ])
+
+          // 把 like/support 數量合併進 currentOpinion
+          this.currentOpinion = {
+            ...opinionData,
+            upvotes: voteStats.like_count ?? 0,
+            downvotes: voteStats.support_count ?? 0
+          }
+
+          return this.currentOpinion
       } catch (error) {
         throw error
       } finally {
@@ -52,9 +62,9 @@ export const useOpinionStore = defineStore('opinion', {
         const data = await opinionAPI.vote(id, voteType)
         // Update local state
         if (this.currentOpinion && this.currentOpinion.opinion_id === id) {
-          this.currentOpinion = data
+          await this.fetchOpinionById(id)
         }
-        return data
+        return this.currentOpinion
       } catch (error) {
         throw error
       }

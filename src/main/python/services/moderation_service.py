@@ -138,22 +138,22 @@ class ModerationService:
                     (opinion_id, moderator_id, old_status, new_status.value)
                 )
 
-                # Notify owner (non-blocking, don't fail if notification fails)
-                try:
-                    NotificationService.create_notification(
-                        NotificationCreate(
-                            user_id=opinion['user_id'],
-                            opinion_id=opinion_id,
-                            type=NotificationType.STATUS_CHANGE,
-                            title=notification_title,
-                            content=notification_content
-                        )
+            # Notify owner (non-blocking, don't fail if notification fails)
+                
+            try:
+                NotificationService.create_notification(
+                    NotificationCreate(
+                        user_id=opinion['user_id'],
+                        opinion_id=opinion_id,
+                        type=NotificationType.STATUS_CHANGE,
+                        title=notification_title,
+                        content=notification_content
                     )
-                except Exception as notif_error:
-                    print(f"Error creating notification: {notif_error}")
-                    # Continue anyway - notification failure should not fail the moderation
-
-                return True
+                )
+            except Exception as notif_error:
+                print(f"Error creating notification: {notif_error}")
+                # Continue anyway - notification failure should not fail the moderation
+            return True
         except Exception as e:
             print(f"Error changing status: {e}")
             return False

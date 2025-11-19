@@ -50,6 +50,7 @@ async def reject_opinion(
     request: RejectRequest,
     moderator: dict = Depends(require_moderator)
 ):
+    
     """Reject an opinion"""
     success = ModerationService.reject_opinion(
         opinion_id, moderator["user_id"], request.reason

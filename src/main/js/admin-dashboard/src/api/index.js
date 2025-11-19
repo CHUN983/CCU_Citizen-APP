@@ -27,8 +27,8 @@ export const opinionAPI = {
     return request.post(`/admin/opinions/${id}/approve`)
   },
   // 拒絕意見
-  rejectOpinion(id) {
-    return request.post(`/admin/opinions/${id}/reject`)
+  rejectOpinion(id, reason) {
+    return request.post(`/admin/opinions/${id}/reject`, { reason })
   },
   // 合併意見
   mergeOpinion(id, targetId) {
