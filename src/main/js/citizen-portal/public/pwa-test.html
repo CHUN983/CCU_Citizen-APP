@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA 測試與預覽</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .preview-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .preview-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .device-preview {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .device {
+            text-align: center;
+        }
+
+        .device-frame {
+            background: #1a1a1a;
+            border-radius: 30px;
+            padding: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            position: relative;
+        }
+
+        .device-frame.phone {
+            width: 280px;
+            height: 560px;
+            border-radius: 40px;
+        }
+
+        .device-frame.tablet {
+            width: 400px;
+            height: 550px;
+            border-radius: 30px;
+        }
+
+        .device-screen {
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 25px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .device-screen iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .device-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 25px;
+            background: #1a1a1a;
+            border-radius: 0 0 15px 15px;
+            z-index: 10;
+        }
+
+        .device-label {
+            margin-top: 15px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .icon-preview {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .icon-item {
+            text-align: center;
+        }
+
+        .icon-box {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+            margin-bottom: 8px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .icon-size {
+            font-size: 12px;
+            color: #666;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .metric-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 PWA 測試與預覽中心</h1>
+
+        <div class="cards">
+            <!-- Service Worker Status -->
+            <div class="card">
+                <h2>🔧 Service Worker 狀態</h2>
+                <div id="sw-status">檢查中...</div>
+                <button onclick="checkServiceWorker()">重新檢查</button>
+                <button onclick="unregisterSW()">取消註冊</button>
+            </div>
+
+            <!-- Manifest Status -->
+            <div class="card">
+                <h2>📋 Manifest 配置</h2>
+                <div id="manifest-status">檢查中...</div>
+                <button onclick="checkManifest()">重新檢查</button>
+                <button onclick="viewManifest()">查看完整配置</button>
+            </div>
+
+            <!-- Installation Status -->
+            <div class="card">
+                <h2>💾 安裝狀態</h2>
+                <div id="install-status">檢查中...</div>
+                <button id="install-btn" onclick="installPWA()" disabled>安裝 PWA</button>
+                <button onclick="checkInstallable()">檢查可安裝性</button>
+            </div>
+        </div>
+
+        <!-- Device Previews -->
+        <div class="preview-section">
+            <h2>📱 裝置預覽</h2>
+            <p style="color: #666; margin-bottom: 20px;">查看 PWA 在不同裝置上的顯示效果</p>
+
+            <div class="device-preview">
+                <div class="device">
+                    <div class="device-frame phone">
+                        <div class="device-notch"></div>
+                        <div class="device-screen">
+                            <iframe src="/" title="手機預覽"></iframe>
+                        </div>
+                    </div>
+                    <div class="device-label">📱 iPhone 14 Pro</div>
+                </div>
+
+                <div class="device">
+                    <div class="device-frame tablet">
+                        <div class="device-screen">
+                            <iframe src="/" title="平板預覽"></iframe>
+                        </div>
+                    </div>
+                    <div class="device-label">📱 iPad Pro</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Icon Preview -->
+        <div class="preview-section">
+            <h2>🎨 圖示預覽</h2>
+            <p style="color: #666; margin-bottom: 20px;">PWA 需要的圖示尺寸（目前使用佔位圖示）</p>
+
+            <div class="icon-preview">
+                <div class="icon-item">
+                    <div class="icon-box">📱</div>
+                    <div class="icon-size">72x72</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-box">📱</div>
+                    <div class="icon-size">96x96</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-box">📱</div>
+                    <div class="icon-size">128x128</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-box">📱</div>
+                    <div class="icon-size">144x144</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-box">📱</div>
+                    <div class="icon-size">192x192</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-box">📱</div>
+                    <div class="icon-size">512x512</div>
+                </div>
+            </div>
+
+            <div class="status info" style="margin-top: 20px;">
+                <strong>💡 提示：</strong> 圖示可以透過 <a href="https://www.pwabuilder.com/imageGenerator" target="_blank">PWA Builder</a> 生成
+            </div>
+        </div>
+
+        <!-- PWA Metrics -->
+        <div class="preview-section">
+            <h2>📊 PWA 指標</h2>
+            <div id="pwa-metrics">
+                <div class="metric">
+                    <span class="metric-label">Service Worker</span>
+                    <span class="metric-value" id="metric-sw">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Manifest</span>
+                    <span class="metric-value" id="metric-manifest">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">HTTPS / Localhost</span>
+                    <span class="metric-value" id="metric-https">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">可安裝</span>
+                    <span class="metric-value" id="metric-installable">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Viewport Meta</span>
+                    <span class="metric-value" id="metric-viewport">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Theme Color</span>
+                    <span class="metric-value" id="metric-theme">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="preview-section">
+            <h2>🔗 快速連結</h2>
+            <button onclick="window.open('/', '_blank')">🏠 開啟主應用</button>
+            <button onclick="openDevTools()">🛠️ Chrome DevTools 教學</button>
+            <button onclick="window.open('https://web.dev/progressive-web-apps/', '_blank')">📚 PWA 文檔</button>
+            <button onclick="window.location.reload()">🔄 重新載入</button>
+        </div>
+    </div>
+
+    <script>
+        let deferredPrompt = null;
+
+        // Check Service Worker
+        async function checkServiceWorker() {
+            const statusEl = document.getElementById('sw-status');
+
+            if (!('serviceWorker' in navigator)) {
+                statusEl.innerHTML = '<div class="status error">❌ 瀏覽器不支援 Service Worker</div>';
+                return;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.getRegistration();
+
+                if (registration) {
+                    const state = registration.active ? registration.active.state : 'installing';
+                    statusEl.innerHTML = `
+                        <div class="status success">
+                            ✅ Service Worker 已註冊<br>
+                            <strong>狀態：</strong> ${state}<br>
+                            <strong>Scope：</strong> <code>${registration.scope}</code>
+                        </div>
+                    `;
+                    document.getElementById('metric-sw').textContent = '✅ 已註冊';
+                } else {
+                    statusEl.innerHTML = '<div class="status warning">⚠️ Service Worker 未註冊</div>';
+                    document.getElementById('metric-sw').textContent = '❌ 未註冊';
+                }
+            } catch (error) {
+                statusEl.innerHTML = `<div class="status error">❌ 檢查失敗：${error.message}</div>`;
+            }
+        }
+
+        // Check Manifest
+        async function checkManifest() {
+            const statusEl = document.getElementById('manifest-status');
+
+            try {
+                const response = await fetch('/manifest.json');
+                if (response.ok) {
+                    const manifest = await response.json();
+                    statusEl.innerHTML = `
+                        <div class="status success">
+                            ✅ Manifest 配置正確<br>
+                            <strong>名稱：</strong> ${manifest.short_name}<br>
+                            <strong>主題色：</strong> <span style="display:inline-block;width:20px;height:20px;background:${manifest.theme_color};border-radius:3px;vertical-align:middle;"></span> ${manifest.theme_color}<br>
+                            <strong>圖示：</strong> ${manifest.icons.length} 個
+                        </div>
+                    `;
+                    document.getElementById('metric-manifest').textContent = '✅ 已配置';
+                    document.getElementById('metric-theme').textContent = manifest.theme_color;
+                } else {
+                    statusEl.innerHTML = '<div class="status error">❌ Manifest 載入失敗</div>';
+                    document.getElementById('metric-manifest').textContent = '❌ 缺失';
+                }
+            } catch (error) {
+                statusEl.innerHTML = `<div class="status error">❌ 檢查失敗：${error.message}</div>`;
+            }
+        }
+
+        // Check Installable
+        function checkInstallable() {
+            const statusEl = document.getElementById('install-status');
+
+            // Check if already installed
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                statusEl.innerHTML = '<div class="status success">✅ PWA 已安裝並正在獨立模式運行</div>';
+                document.getElementById('metric-installable').textContent = '✅ 已安裝';
+                return;
+            }
+
+            // Check if installable
+            if (deferredPrompt) {
+                statusEl.innerHTML = '<div class="status success">✅ PWA 可以安裝<br>點擊下方按鈕進行安裝</div>';
+                document.getElementById('install-btn').disabled = false;
+                document.getElementById('metric-installable').textContent = '✅ 可安裝';
+            } else {
+                statusEl.innerHTML = `
+                    <div class="status info">
+                        ℹ️ 安裝提示尚未觸發<br>
+                        <small>請稍等片刻，或從瀏覽器選單手動安裝</small>
+                    </div>
+                `;
+                document.getElementById('metric-installable').textContent = '⏳ 等待中';
+            }
+        }
+
+        // Install PWA
+        async function installPWA() {
+            if (!deferredPrompt) {
+                alert('安裝提示尚未準備好，請從瀏覽器選單手動安裝');
+                return;
+            }
+
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+
+            if (outcome === 'accepted') {
+                document.getElementById('install-status').innerHTML =
+                    '<div class="status success">✅ PWA 安裝成功！</div>';
+            } else {
+                document.getElementById('install-status').innerHTML =
+                    '<div class="status info">ℹ️ 您取消了安裝</div>';
+            }
+
+            deferredPrompt = null;
+            document.getElementById('install-btn').disabled = true;
+        }
+
+        // Unregister Service Worker
+        async function unregisterSW() {
+            if (confirm('確定要取消註冊 Service Worker 嗎？')) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    await registration.unregister();
+                    alert('Service Worker 已取消註冊，頁面將重新載入');
+                    window.location.reload();
+                }
+            }
+        }
+
+        // View Manifest
+        async function viewManifest() {
+            try {
+                const response = await fetch('/manifest.json');
+                const manifest = await response.json();
+                const win = window.open('', '_blank');
+                win.document.write('<pre>' + JSON.stringify(manifest, null, 2) + '</pre>');
+            } catch (error) {
+                alert('無法載入 manifest.json');
+            }
+        }
+
+        // Open DevTools Tutorial
+        function openDevTools() {
+            alert(`Chrome DevTools 使用方法：\n\n1. 按 F12 開啟 DevTools\n2. 切換到 "Application" 分頁\n3. 查看左側選單：\n   - Service Workers\n   - Manifest\n   - Cache Storage\n   - Background Services\n\n4. 切換到 "Lighthouse" 分頁進行 PWA 評分`);
+        }
+
+        // Check other metrics
+        function checkOtherMetrics() {
+            // Check HTTPS
+            const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
+            document.getElementById('metric-https').textContent = isSecure ? '✅ 是' : '❌ 否';
+
+            // Check Viewport
+            const viewport = document.querySelector('meta[name="viewport"]');
+            document.getElementById('metric-viewport').textContent = viewport ? '✅ 已設定' : '❌ 缺失';
+        }
+
+        // Listen for install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-btn').disabled = false;
+            document.getElementById('install-status').innerHTML =
+                '<div class="status success">✅ PWA 可以安裝！</div>';
+        });
+
+        // Listen for app installed
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('install-status').innerHTML =
+                '<div class="status success">✅ PWA 安裝成功！</div>';
+            deferredPrompt = null;
+        });
+
+        // Initialize checks
+        window.addEventListener('load', () => {
+            checkServiceWorker();
+            checkManifest();
+            checkInstallable();
+            checkOtherMetrics();
+        });
+    </script>
+</body>
+</html>
