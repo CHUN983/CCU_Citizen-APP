@@ -64,9 +64,9 @@
             <div v-else class="opinion-list">
               <div
                 v-for="opinion in recentOpinions"
-                :key="opinion.opinion_id"
+                :key="opinion.id"
                 class="opinion-item"
-                @click="$router.push(`/opinions/${opinion.opinion_id}`)"
+                @click="$router.push(`/opinions/${opinion.id}`)"
               >
                 <h4>{{ opinion.title }}</h4>
                 <p class="description">{{ opinion.content }}</p>

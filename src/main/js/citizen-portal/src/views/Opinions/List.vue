@@ -36,7 +36,7 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="狀態">
+            <!-- <el-form-item label="狀態">
               <el-select v-model="filters.status" placeholder="選擇狀態" clearable @change="handleSearch">
                 <el-option label="待審核" value="pending" />
                 <el-option label="已通過" value="approved" />
@@ -45,7 +45,7 @@
                 <el-option label="已完成" value="completed" />
                 <el-option label="已拒絕" value="rejected" />
               </el-select>
-            </el-form-item>
+            </el-form-item> -->
 
             <el-form-item label="排序方式">
               <el-select v-model="filters.sort_by" placeholder="選擇排序" @change="handleSearch">
@@ -88,9 +88,9 @@
             <div v-else class="opinions-container">
               <div
                 v-for="opinion in opinions"
-                :key="opinion.opinion_id"
+                :key="opinion.id"
                 class="opinion-card"
-                @click="$router.push(`/opinions/${opinion.opinion_id}`)"
+                @click="$router.push(`/opinions/${opinion.id}`)"
               >
                 <div class="opinion-main">
                   <h3>{{ opinion.title }}</h3>
@@ -214,9 +214,13 @@ const fetchOpinions = async () => {
     }
 
     if (filters.search) params.search = filters.search
-    if (filters.category_id) params.category_id = filters.category_id
+    if (filters.category_id !== null && filters.category_id !== undefined) {
+      params.category_id = filters.category_id
+    }
     if (filters.status) params.status = filters.status
     if (filters.sort_by) params.sort_by = filters.sort_by
+
+    console.log('params:', params)
 
     const data = await opinionStore.fetchOpinions(params)
     total.value = data.total || 0
@@ -257,6 +261,7 @@ onMounted(async () => {
   // Fetch categories
   try {
     await opinionStore.fetchCategories()
+    console.log('categories:', categories.value)
   } catch (error) {
     console.error('Failed to fetch categories:', error)
     // Don't block rendering on error

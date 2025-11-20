@@ -78,5 +78,5 @@ build/
 dist/
 
 # Configuration (uncomment if sensitive)
-# .env
+.env
 # config/secrets.*

@@ -68,6 +68,23 @@ async def add_comment(
 
     return comment
 
+@router.get("/{opinion_id}/comments", response_model=list[Comment])
+async def get_comments(
+    opinion_id: int,
+    limit: int = Query(50, ge=1, le=500)
+):
+    """Get comments for an opinion with limit"""
+
+    # Check if opinion exists
+    opinion = OpinionService.get_opinion_by_id(opinion_id)
+    if not opinion:
+        raise HTTPException(status_code=404, detail="Opinion not found")
+
+    comments = OpinionService.get_comments_by_opinion_id(opinion_id, limit)
+    print("DEBUG comments:", comments)
+
+    return comments
+
 
 @router.post("/{opinion_id}/vote", status_code=200)
 async def vote_opinion(

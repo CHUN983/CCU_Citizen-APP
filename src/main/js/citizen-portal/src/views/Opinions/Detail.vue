@@ -33,7 +33,7 @@
         <div class="opinion-footer">
           <div class="author-info">
             <el-icon><User /></el-icon>
-            <span>{{ opinion.author_name || '匿名' }}</span>
+            <span>{{ opinion.user_name || '匿名' }}</span>
           </div>
           <div class="date-info">
             <el-icon><Clock /></el-icon>
@@ -126,13 +126,13 @@
           <el-empty v-if="!commentsLoading && comments.length === 0" description="暫無留言" />
           <div
             v-for="comment in comments"
-            :key="comment.comment_id"
+            :key="comment.id"
             class="comment-item"
           >
             <div class="comment-header">
               <div class="comment-author">
                 <el-icon><User /></el-icon>
-                <span>{{ comment.author_name || '匿名' }}</span>
+                <span>{{ comment.user_name || '匿名' }}</span>
               </div>
               <div class="comment-date">
                 {{ formatDate(comment.created_at) }}
@@ -253,7 +253,7 @@ const fetchComments = async () => {
   commentsLoading.value = true
   try {
     const data = await commentAPI.getList(opinionId.value, { limit: 100 })
-    comments.value = data.comments || []
+    comments.value = data || []
   } catch (error) {
     console.error('Failed to fetch comments:', error)
   } finally {

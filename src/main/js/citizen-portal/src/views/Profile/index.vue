@@ -51,12 +51,20 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed , onMounted } from 'vue'
 import { useUserStore } from '../../store/user'
 
 const userStore = useUserStore()
 
 const user = computed(() => userStore.user)
+
+onMounted(async () => {
+  try {
+    await userStore.getProfile()
+  } catch (e) {
+    console.error('載入個人資料失敗', e)
+  }
+})
 
 const getRoleType = (role) => {
   const typeMap = {

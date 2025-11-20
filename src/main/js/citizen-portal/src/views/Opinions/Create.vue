@@ -18,7 +18,7 @@
         <el-form-item label="標題" prop="title">
           <el-input
             v-model="form.title"
-            placeholder="請輸入意見標題（3-200字符）"
+            placeholder="請輸入意見標題（5-200字符）"
             maxlength="200"
             show-word-limit
             clearable
@@ -146,7 +146,7 @@ const form = reactive({
 const rules = {
   title: [
     { required: true, message: '請輸入標題', trigger: 'blur' },
-    { min: 3, max: 200, message: '標題長度應在 3-200 之間', trigger: 'blur' }
+    { min: 5, max: 200, message: '標題長度應在 5-200 之間', trigger: 'blur' }
   ],
   content: [
     { required: true, message: '請輸入內容', trigger: 'blur' },
@@ -209,7 +209,8 @@ const handleSubmit = async () => {
 
         if (form.region) submitData.region = form.region
         if (form.tags.length > 0) submitData.tags = form.tags
-
+       
+        console.log('submitData:', submitData)
         await opinionStore.createOpinion(submitData)
 
         ElMessage.success('意見提交成功！等待管理員審核')

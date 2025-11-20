@@ -203,15 +203,30 @@ const handleApprove = async (id) => {
 
 const handleReject = async (id) => {
   try {
-    await ElMessageBox.confirm('確定要拒絕這個意見嗎？', '確認', {
-      confirmButtonText: '確定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    const { value, action } = await ElMessageBox.prompt(
+      '請輸入拒絕原因（必填）：',
+      '拒絕意見',
+      {
+        confirmButtonText: '確定',
+        cancelButtonText: '取消',
+        inputType: 'textarea',
+        inputPlaceholder: '例如：內容與主題無關、含不適當言論等',
+        inputValidator: (val) => {
+          if (!val || !val.trim()) {
+            return '拒絕原因不得為空'
+          }
+          return true
+        },
+        inputErrorMessage: '拒絕原因不得為空',
+        type: 'warning'
+      }
+    )
 
-    await opinionAPI.rejectOpinion(id)
-    ElMessage.success('已拒絕')
-    fetchOpinions()
+    if (action === 'confirm') {
+      await opinionAPI.rejectOpinion(id, value)
+      ElMessage.success('已拒絕')
+      fetchOpinions()
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('Reject failed:', error)

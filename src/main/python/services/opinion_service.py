@@ -25,30 +25,43 @@ class OpinionService:
                                  region, latitude, longitude, is_public)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
+        try:
+            current_step = "insert_opinion"
+            with get_db_cursor() as cursor:
+                cursor.execute(
+                    query,
+                    (user_id, opinion_data.title, opinion_data.content,
+                     opinion_data.category_id, opinion_data.status,
+                    opinion_data.region, opinion_data.latitude,
+                    opinion_data.longitude, opinion_data.is_public)
+                )
 
-        with get_db_cursor() as cursor:
-            cursor.execute(
-                query,
-                (user_id, opinion_data.title, opinion_data.content,
-                 opinion_data.category_id, opinion_data.status,
-                 opinion_data.region, opinion_data.latitude,
-                 opinion_data.longitude, opinion_data.is_public)
-            )
+                opinion_id = cursor.lastrowid
 
-            opinion_id = cursor.lastrowid
+                # Add tags if provided
+                if opinion_data.tags:
+                    current_step = "insert_tags"
+                    OpinionService._add_tags(cursor, opinion_id, opinion_data.tags)
 
-            # Add tags if provided
-            if opinion_data.tags:
-                OpinionService._add_tags(cursor, opinion_id, opinion_data.tags)
 
-            # Log history
-            cursor.execute(
-                """INSERT INTO opinion_history (opinion_id, user_id, action, new_status)
-                   VALUES (%s, %s, 'created', %s)""",
-                (opinion_id, user_id, opinion_data.status)
-            )
+                # Log history
+                current_step = "insert_history"
+                cursor.execute(
+                    """INSERT INTO opinion_history (opinion_id, user_id, action, new_status)
+                    VALUES (%s, %s, 'created', %s)""",
+                    (opinion_id, user_id, opinion_data.status)
+                )
 
-            return OpinionService.get_opinion_by_id(opinion_id)
+            current_step = "get_opinion_by_id"
+            opinion = OpinionService.get_opinion_by_id(opinion_id)
+
+            return opinion
+        
+        except Exception as e:
+            # 這裡你可以先 print / log，再丟出給 FastAPI
+            print(f"[ERROR] create_opinion failed at step '{current_step}': {e}")
+            return None
+        
 
     @staticmethod
     def get_opinion_by_id(opinion_id: int, increment_view: bool = False) -> Optional[OpinionWithUser]:
@@ -185,6 +198,23 @@ class OpinionService:
                 (comment_id,)
             )
             return Comment(**cursor.fetchone())
+        
+    @staticmethod
+    def get_comments_by_opinion_id(opinion_id: int, limit: int = 50) -> List[Comment]:
+        """Get list of comments for an opinion"""
+        query = """
+            SELECT c.*, u.username
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.opinion_id = %s AND c.is_deleted = FALSE
+            ORDER BY c.created_at ASC
+            LIMIT %s
+        """
+
+        with get_db_cursor() as cursor:
+            cursor.execute(query, (opinion_id, limit))
+            rows = cursor.fetchall()
+            return [Comment(**row) for row in rows]
 
     @staticmethod
     def vote_opinion(opinion_id: int, user_id: int, vote_data: VoteCreate) -> bool:
