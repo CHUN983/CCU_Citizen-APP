@@ -81,15 +81,44 @@
 
             <!-- 媒體附件 -->
             <div v-if="opinion.media && opinion.media.length > 0" class="opinion-media">
-              <h3>附件</h3>
-              <el-image
-                v-for="media in opinion.media"
-                :key="media.id"
-                :src="`http://localhost:8000${media.file_path}`"
-                :preview-src-list="opinion.media.map(m => `http://localhost:8000${m.file_path}`)"
-                fit="cover"
-                style="width: 200px; height: 200px; margin-right: 10px;"
-              />
+              <h3>附件 ({{ opinion.media.length }} 個檔案)</h3>
+              <div class="media-grid">
+                <div
+                  v-for="media in opinion.media"
+                  :key="media.id"
+                  class="media-item"
+                >
+                  <el-image
+                    v-if="media.media_type === 'image'"
+                    :src="getMediaUrl(media)"
+                    :preview-src-list="imageMediaList"
+                    fit="cover"
+                    class="media-image"
+                  >
+                    <template #error>
+                      <div class="image-error">
+                        <el-icon><Picture /></el-icon>
+                        <span>載入失敗</span>
+                      </div>
+                    </template>
+                  </el-image>
+                  <div v-else-if="media.media_type === 'video'" class="video-wrapper">
+                    <video
+                      :src="getMediaUrl(media)"
+                      controls
+                      class="media-video"
+                    >
+                      您的瀏覽器不支援影片播放
+                    </video>
+                  </div>
+                  <div class="media-info">
+                    <el-tag size="small" :type="media.media_type === 'image' ? 'success' : 'primary'">
+                      {{ media.media_type === 'image' ? '圖片' : '影片' }}
+                    </el-tag>
+                    <span class="file-size">{{ formatFileSize(media.file_size) }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 操作按鈕 -->
@@ -121,10 +150,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Grid, Document, ArrowLeft, Check, Close } from '@element-plus/icons-vue'
+import { Grid, Document, ArrowLeft, Check, Close, Picture } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/user'
 import { opinionAPI } from '../../api'
 
@@ -226,6 +255,25 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleString('zh-TW')
 }
 
+const getMediaUrl = (media) => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  return `${baseUrl}/media/files/${media.media_type}/${media.file_path.split('/').pop()}`
+}
+
+const imageMediaList = computed(() => {
+  if (!opinion.value?.media) return []
+  return opinion.value.media
+    .filter(m => m.media_type === 'image')
+    .map(m => getMediaUrl(m))
+})
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return '未知大小'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
 const handleLogout = () => {
   ElMessageBox.confirm('確定要登出嗎？', '提示', {
     confirmButtonText: '確定',
@@ -324,10 +372,66 @@ onMounted(() => {
 
 .opinion-media {
   margin: 20px 0;
+  padding: 20px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
 }
 
 .opinion-media h3 {
-  margin-bottom: 10px;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 15px;
+}
+
+.media-item {
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.media-image {
+  width: 100%;
+  height: 200px;
+  cursor: pointer;
+}
+
+.image-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #909399;
+}
+
+.video-wrapper {
+  width: 100%;
+  background: #000;
+}
+
+.media-video {
+  width: 100%;
+  max-height: 300px;
+}
+
+.media-info {
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border-top: 1px solid #ebeef5;
+}
+
+.file-size {
+  font-size: 12px;
+  color: #909399;
 }
 
 .opinion-actions {
