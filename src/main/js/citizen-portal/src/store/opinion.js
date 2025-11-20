@@ -7,7 +7,11 @@ export const useOpinionStore = defineStore('opinion', {
     currentOpinion: null,
     categories: [],
     total: 0,
-    loading: false
+    loading: false,
+
+    bookmarkedOpinions: [],
+    bookmarkedTotal: 0,
+    bookmarkedLoading: false
   }),
 
   actions: {
@@ -28,16 +32,18 @@ export const useOpinionStore = defineStore('opinion', {
     async fetchOpinionById(id) {
       this.loading = true
       try {
-          const [opinionData, voteStats] = await Promise.all([
+          const [voteStats, opinionData, collectStatus] = await Promise.all([
+            opinionAPI.getVotes(id),
             opinionAPI.getById(id),
-            opinionAPI.getVotes(id)
+            opinionAPI.getBookmarkStatus(id)
           ])
 
           // 把 like/support 數量合併進 currentOpinion
           this.currentOpinion = {
             ...opinionData,
             upvotes: voteStats.like_count ?? 0,
-            downvotes: voteStats.support_count ?? 0
+            downvotes: voteStats.support_count ?? 0,
+            is_bookmarked: collectStatus.is_collected ?? false
           }
 
           return this.currentOpinion
@@ -45,6 +51,24 @@ export const useOpinionStore = defineStore('opinion', {
         throw error
       } finally {
         this.loading = false
+      }
+    },
+
+    async fetchBookmarkedOpinions(page = 1, pageSize = 5) {
+      this.bookmarkedLoading = true
+      try {
+        const params = {
+          page,
+          page_size: pageSize
+        }
+        const data = await opinionAPI.getBookmarked(params)
+        this.bookmarkedOpinions = data.items || []
+        this.bookmarkedTotal = data.total || 0
+        return data
+      } catch (error) {
+        throw error
+      } finally {
+        this.bookmarkedLoading = false
       }
     },
 
@@ -73,6 +97,12 @@ export const useOpinionStore = defineStore('opinion', {
     async bookmarkOpinion(id) {
       try {
         const data = await opinionAPI.bookmark(id)
+        if (this.currentOpinion && this.currentOpinion.id === id) {
+          this.currentOpinion = {
+            ...this.currentOpinion,
+            is_bookmarked: true
+          }
+        }
         return data
       } catch (error) {
         throw error
@@ -82,6 +112,12 @@ export const useOpinionStore = defineStore('opinion', {
     async unbookmarkOpinion(id) {
       try {
         const data = await opinionAPI.unbookmark(id)
+        if (this.currentOpinion && this.currentOpinion.id === id) {
+          this.currentOpinion = {
+            ...this.currentOpinion,
+            is_bookmarked: false
+          }
+        }
         return data
       } catch (error) {
         throw error
