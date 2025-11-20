@@ -284,6 +284,112 @@ class OpinionService:
             return cursor.rowcount > 0
 
     @staticmethod
+    def is_collected(opinion_id: int, user_id: int) -> bool:
+        """Check if user has collected the opinion"""
+        query = """
+            SELECT 1 FROM collections
+            WHERE opinion_id = %s AND user_id = %s
+            LIMIT 1
+        """
+        with get_db_cursor() as cursor:
+            cursor.execute(query, (opinion_id, user_id))
+            row = cursor.fetchone()
+            return row is not None
+    
+    @staticmethod
+    def get_bookmarked_opinions(
+        user_id: int,
+        page: int = 1,
+        page_size: int = 5
+    ) -> OpinionList:
+        """Get paginated list of opinions bookmarked by user"""
+        offset = (page - 1) * page_size
+
+        # 1) 先算總數
+        count_query = """
+            SELECT COUNT(*) AS total
+            FROM collections c
+            JOIN opinions o ON c.opinion_id = o.id
+            WHERE c.user_id = %s AND o.is_public = TRUE
+        """
+
+        # 2) 再拿實際資料
+        data_query = """
+            SELECT 
+                o.*, 
+                u.username,
+                u.full_name AS user_full_name,
+                -- like 數量
+                (
+                    SELECT COUNT(*) 
+                    FROM votes v 
+                    WHERE v.opinion_id = o.id 
+                      AND v.vote_type = %s
+                ) AS upvotes,
+                -- support 數量
+                (
+                    SELECT COUNT(*) 
+                    FROM votes v 
+                    WHERE v.opinion_id = o.id 
+                      AND v.vote_type = %s
+                ) AS downvotes,
+                -- 留言數
+                (
+                    SELECT COUNT(*) 
+                    FROM comments cmt
+                    WHERE cmt.opinion_id = o.id
+                      AND cmt.is_deleted = FALSE
+                ) AS comment_count
+            FROM collections c
+            JOIN opinions o ON c.opinion_id = o.id
+            JOIN users u ON o.user_id = u.id
+            WHERE c.user_id = %s AND o.is_public = TRUE
+            ORDER BY c.created_at DESC
+            LIMIT %s OFFSET %s
+        """
+
+        with get_db_cursor() as cursor:
+            # total
+            cursor.execute(count_query, (user_id,))
+            total = cursor.fetchone()['total']
+
+            # data
+            cursor.execute(
+                data_query,
+                (
+                    VoteType.LIKE.value,      # 'like'
+                    VoteType.DISLIKE.value,    # 'support'
+                    user_id,
+                    page_size,
+                    offset,
+                )
+            )
+            rows = cursor.fetchall()
+
+            # 補 tags
+            for row in rows:
+                cursor.execute(
+                    """
+                    SELECT t.name 
+                    FROM tags t
+                    JOIN opinion_tags ot ON t.id = ot.tag_id
+                    WHERE ot.opinion_id = %s
+                    """,
+                    (row['id'],)
+                )
+                row['tags'] = [r['name'] for r in cursor.fetchall()]
+
+            items = [OpinionWithUser(**row) for row in rows]
+
+            return OpinionList(
+                total=total,
+                page=page,
+                page_size=page_size,
+                items=items
+            )
+
+
+    @staticmethod
     def _add_tags(cursor, opinion_id: int, tag_names: List[str]):
         """Helper to add tags to opinion"""
         for tag_name in tag_names:

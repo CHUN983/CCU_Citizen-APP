@@ -39,6 +39,19 @@ async def get_opinions(
     """Get paginated list of opinions"""
     return OpinionService.get_opinions(page, page_size, status, category_id)
 
+#固定路徑要放在參數路徑前面，否則會被當成參數處理
+@router.get("/collect", response_model=OpinionList)
+async def get_bookmarked_opinions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(5, ge=1, le=50),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get paginated list of opinions bookmarked by current user"""
+    return OpinionService.get_bookmarked_opinions(
+        user_id=current_user["user_id"],
+        page=page,
+        page_size=page_size
+    )
 
 @router.get("/{opinion_id}", response_model=Opinion)
 async def get_opinion(opinion_id: int):
@@ -117,6 +130,8 @@ async def get_vote_stats(opinion_id: int):
     stats = OpinionService.get_vote_stats(opinion_id)
     return stats
 
+
+
 @router.post("/{opinion_id}/collect", status_code=200)
 async def collect_opinion(
     opinion_id: int,
@@ -135,6 +150,19 @@ async def collect_opinion(
 
     return {"message": "Opinion collected successfully"}
 
+@router.get("/{opinion_id}/collect")
+async def get_collect_status(
+    opinion_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Check if current user has collected this opinion"""
+    # 確認意見存在
+    opinion = OpinionService.get_opinion_by_id(opinion_id)
+    if not opinion:
+        raise HTTPException(status_code=404, detail="Opinion not found")
+
+    is_collected = OpinionService.is_collected(opinion_id, current_user["user_id"])
+    return {"is_collected": is_collected}
 
 @router.delete("/{opinion_id}/collect", status_code=200)
 async def uncollect_opinion(
