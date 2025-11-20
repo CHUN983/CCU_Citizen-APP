@@ -132,7 +132,7 @@
             <div class="comment-header">
               <div class="comment-author">
                 <el-icon><User /></el-icon>
-                <span>{{ comment.author_name || '匿名' }}</span>
+                <span>{{ comment.username || '匿名' }}</span>
               </div>
               <div class="comment-date">
                 {{ formatDate(comment.created_at) }}
