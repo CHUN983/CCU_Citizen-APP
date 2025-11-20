@@ -89,13 +89,16 @@
             :on-remove="handleFileRemove"
             :file-list="uploadedFiles"
             list-type="picture-card"
-            accept="image/*,video/*"
+            accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.avi,.mov,.wmv,.flv,.webm"
             :limit="5"
           >
             <el-icon><Plus /></el-icon>
             <template #tip>
               <div class="el-upload__tip">
-                支援圖片/影片上傳，單檔最大 50MB，最多 5 個檔案
+                支援格式：<br>
+                圖片：JPG, PNG, GIF, WebP (最大 10MB)<br>
+                影片：MP4, AVI, MOV, WMV, FLV, WebM (最大 50MB)<br>
+                最多 5 個檔案
               </div>
             </template>
           </el-upload>
@@ -114,8 +117,9 @@
             <ul style="margin: 0; padding-left: 20px">
               <li>請確保您的意見內容真實、準確</li>
               <li>禁止發布違法、不實或不當內容</li>
+              <li>圖片檔案請勿超過 10MB，影片檔案請勿超過 50MB</li>
               <li>管理員將在 1-3 個工作日內審核您的意見</li>
-              <li>審核通過後，您的意見將公開顯示</li>
+              <li>審核通過後，您的意見和附件將公開顯示</li>
             </ul>
           </el-alert>
         </el-form-item>
