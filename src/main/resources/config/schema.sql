@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     opinion_id INT NULL,
-    type ENUM('comment', 'status_change', 'merged', 'approved', 'rejected') NOT NULL,
+    type ENUM('comment', 'like', 'status_change', 'merged', 'approved', 'rejected') NOT NULL,
     title VARCHAR(200) NOT NULL,
     content TEXT,
     is_read BOOLEAN DEFAULT FALSE,
@@ -144,6 +144,21 @@ CREATE TABLE IF NOT EXISTS notifications (
     INDEX idx_user (user_id),
     INDEX idx_read (is_read),
     INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Notification milestones tracking table (通知級距追蹤表)
+-- 用於追蹤按讚和留言的級距通知（1, 2, 4, 8, 16...）
+CREATE TABLE IF NOT EXISTS notification_milestones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    opinion_id INT NOT NULL,
+    milestone_type ENUM('like', 'comment') NOT NULL,
+    last_notified_count INT DEFAULT 0 COMMENT '上次通知時的數量',
+    next_milestone INT DEFAULT 1 COMMENT '下次通知的目標數量',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (opinion_id) REFERENCES opinions(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_milestone (opinion_id, milestone_type),
+    INDEX idx_opinion (opinion_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Opinion history/audit log (歷史紀錄)
