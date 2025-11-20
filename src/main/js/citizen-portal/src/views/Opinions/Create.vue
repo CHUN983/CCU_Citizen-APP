@@ -82,6 +82,25 @@
           </div>
         </el-form-item>
 
+        <el-form-item label="附件">
+          <el-upload
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            :on-remove="handleFileRemove"
+            :file-list="uploadedFiles"
+            list-type="picture-card"
+            accept="image/*,video/*"
+            :limit="5"
+          >
+            <el-icon><Plus /></el-icon>
+            <template #tip>
+              <div class="el-upload__tip">
+                支援圖片/影片上傳，單檔最大 50MB，最多 5 個檔案
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+
         <el-form-item>
           <el-alert
             type="info"
@@ -124,6 +143,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useOpinionStore } from '../../store/opinion'
+import { mediaAPI } from '../../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
@@ -132,6 +152,8 @@ const opinionStore = useOpinionStore()
 const formRef = ref(null)
 const loading = ref(false)
 const tagInput = ref('')
+const uploadedFiles = ref([])
+const uploadingCount = ref(0)
 
 const categories = computed(() => opinionStore.categories)
 
@@ -140,7 +162,8 @@ const form = reactive({
   content: '',
   category_id: null,
   region: '',
-  tags: []
+  tags: [],
+  media_files: []
 })
 
 const rules = {
@@ -176,9 +199,19 @@ const handleRemoveTag = (tag) => {
   }
 }
 
+const handleFileChange = (file, fileList) => {
+  uploadedFiles.value = fileList
+}
+
+const handleFileRemove = (file, fileList) => {
+  uploadedFiles.value = fileList
+}
+
 const handleReset = () => {
   formRef.value?.resetFields()
   form.tags = []
+  form.media_files = []
+  uploadedFiles.value = []
   tagInput.value = ''
 }
 
@@ -200,6 +233,28 @@ const handleSubmit = async () => {
 
         loading.value = true
 
+        // Upload media files first
+        const mediaFiles = []
+        if (uploadedFiles.value.length > 0) {
+          uploadingCount.value = uploadedFiles.value.length
+
+          for (const fileItem of uploadedFiles.value) {
+            try {
+              const uploadResult = await mediaAPI.upload(fileItem.raw)
+              mediaFiles.push({
+                media_type: uploadResult.media_type,
+                file_path: uploadResult.file_path,
+                file_size: uploadResult.file_size,
+                mime_type: uploadResult.mime_type
+              })
+            } catch (uploadError) {
+              console.error('File upload failed:', uploadError)
+              ElMessage.warning(`檔案 ${fileItem.name} 上傳失敗`)
+            }
+          }
+          uploadingCount.value = 0
+        }
+
         const submitData = {
           title: form.title,
           content: form.content,
@@ -209,7 +264,8 @@ const handleSubmit = async () => {
 
         if (form.region) submitData.region = form.region
         if (form.tags.length > 0) submitData.tags = form.tags
-       
+        if (mediaFiles.length > 0) submitData.media_files = mediaFiles
+
         console.log('submitData:', submitData)
         await opinionStore.createOpinion(submitData)
 

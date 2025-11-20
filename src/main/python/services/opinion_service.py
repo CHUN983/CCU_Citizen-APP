@@ -43,6 +43,10 @@ class OpinionService:
                     current_step = "insert_tags"
                     OpinionService._add_tags(cursor, opinion_id, opinion_data.tags)
 
+                # Add media files if provided
+                if opinion_data.media_files:
+                    current_step = "insert_media"
+                    OpinionService._add_media_files(cursor, opinion_id, opinion_data.media_files)
 
                 # Log history
                 current_step = "insert_history"
@@ -100,6 +104,17 @@ class OpinionService:
             tags = [row['name'] for row in cursor.fetchall()]
             opinion_row['tags'] = tags
 
+            # Get media files
+            cursor.execute(
+                """SELECT id, media_type, file_path, file_size, mime_type, created_at
+                   FROM opinion_media
+                   WHERE opinion_id = %s
+                   ORDER BY created_at ASC""",
+                (opinion_id,)
+            )
+            media = cursor.fetchall()
+            opinion_row['media'] = media if media else []
+
             return OpinionWithUser(**opinion_row)
 
     @staticmethod
@@ -145,7 +160,7 @@ class OpinionService:
             cursor.execute(data_query, params + [page_size, offset])
             opinions = cursor.fetchall()
 
-            # Get tags for each opinion
+            # Get tags and media for each opinion
             for opinion in opinions:
                 cursor.execute(
                     """SELECT t.name FROM tags t
@@ -154,6 +169,16 @@ class OpinionService:
                     (opinion['id'],)
                 )
                 opinion['tags'] = [row['name'] for row in cursor.fetchall()]
+
+                cursor.execute(
+                    """SELECT id, media_type, file_path, file_size, mime_type, created_at
+                       FROM opinion_media
+                       WHERE opinion_id = %s
+                       ORDER BY created_at ASC""",
+                    (opinion['id'],)
+                )
+                media = cursor.fetchall()
+                opinion['media'] = media if media else []
 
             items = [OpinionWithUser(**opinion) for opinion in opinions]
 
@@ -431,4 +456,15 @@ class OpinionService:
             cursor.execute(
                 "INSERT IGNORE INTO opinion_tags (opinion_id, tag_id) VALUES (%s, %s)",
                 (opinion_id, tag_id)
+            )
+
+    @staticmethod
+    def _add_media_files(cursor, opinion_id: int, media_files: List[dict]):
+        """Helper to add media files to opinion"""
+        for media_file in media_files:
+            cursor.execute(
+                """INSERT INTO opinion_media (opinion_id, media_type, file_path, file_size, mime_type)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (opinion_id, media_file.get('media_type'), media_file.get('file_path'),
+                 media_file.get('file_size'), media_file.get('mime_type'))
             )

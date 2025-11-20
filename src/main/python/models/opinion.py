@@ -62,6 +62,7 @@ class OpinionBase(BaseModel):
 class OpinionCreate(OpinionBase):
     """Opinion creation model"""
     tags: Optional[List[str]] = []
+    media_files: Optional[List[dict]] = []  # List of uploaded media file info
     status: str = "pending"  # Accept string status for easier frontend integration
 
 

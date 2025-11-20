@@ -23,6 +23,34 @@
           <p>{{ opinion.content }}</p>
         </div>
 
+        <!-- Media Attachments -->
+        <div v-if="opinion.media && opinion.media.length > 0" class="media-section">
+          <el-divider content-position="left">附件</el-divider>
+          <div class="media-grid">
+            <div
+              v-for="media in opinion.media"
+              :key="media.id"
+              class="media-item"
+            >
+              <img
+                v-if="media.media_type === 'image'"
+                :src="getMediaUrl(media)"
+                :alt="opinion.title"
+                class="media-image"
+                @click="previewMedia(media)"
+              />
+              <video
+                v-else-if="media.media_type === 'video'"
+                :src="getMediaUrl(media)"
+                class="media-video"
+                controls
+              >
+                您的瀏覽器不支援影片播放
+              </video>
+            </div>
+          </div>
+        </div>
+
         <!-- Location Info -->
         <div v-if="opinion.location" class="location-info">
           <el-icon><Location /></el-icon>
@@ -283,6 +311,15 @@ const handleSubmitComment = async () => {
   }
 }
 
+const getMediaUrl = (media) => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  return `${baseUrl}/media/files/${media.media_type}/${media.file_path.split('/').pop()}`
+}
+
+const previewMedia = (media) => {
+  window.open(getMediaUrl(media), '_blank')
+}
+
 onMounted(async () => {
   
   await fetchOpinion()
@@ -425,5 +462,41 @@ onMounted(async () => {
   .vote-buttons .el-button {
     width: 100%;
   }
+}
+
+.media-section {
+  margin: 20px 0;
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.media-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f5f7fa;
+}
+
+.media-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.media-image:hover {
+  transform: scale(1.05);
+}
+
+.media-video {
+  width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
 }
 </style>
