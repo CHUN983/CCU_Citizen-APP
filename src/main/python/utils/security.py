@@ -3,7 +3,7 @@ Security utilities for authentication and authorization
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
 import jwt
@@ -60,6 +60,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """
     to_encode = data.copy()
 
+    # python 3.12 before
+    # datatime.utcnow() <==> datetime.now(timezone.utc)
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:

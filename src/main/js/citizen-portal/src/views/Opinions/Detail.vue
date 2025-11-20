@@ -33,7 +33,7 @@
         <div class="opinion-footer">
           <div class="author-info">
             <el-icon><User /></el-icon>
-            <span>{{ opinion.user_name || '匿名' }}</span>
+            <span>{{ opinion.username || '匿名' }}</span>
           </div>
           <div class="date-info">
             <el-icon><Clock /></el-icon>
@@ -48,7 +48,7 @@
             <el-button
               :type="opinion.user_vote === 'up' ? 'success' : 'default'"
               :disabled="!isLoggedIn"
-              @click="handleVote('up')"
+              @click="handleVote('like')"
             >
               <el-icon><CaretTop /></el-icon>
               支持 ({{ opinion.upvotes }})
@@ -56,7 +56,7 @@
             <el-button
               :type="opinion.user_vote === 'down' ? 'danger' : 'default'"
               :disabled="!isLoggedIn"
-              @click="handleVote('down')"
+              @click="handleVote('support')"
             >
               <el-icon><CaretBottom /></el-icon>
               反對 ({{ opinion.downvotes }})
@@ -132,7 +132,7 @@
             <div class="comment-header">
               <div class="comment-author">
                 <el-icon><User /></el-icon>
-                <span>{{ comment.user_name || '匿名' }}</span>
+                <span>{{ comment.author_name || '匿名' }}</span>
               </div>
               <div class="comment-date">
                 {{ formatDate(comment.created_at) }}
@@ -169,6 +169,7 @@ const comments = ref([])
 const commentsLoading = ref(false)
 const newComment = ref('')
 const commentLoading = ref(false)
+
 
 const opinionId = computed(() => parseInt(route.params.id))
 
@@ -240,6 +241,7 @@ const handleBookmark = async () => {
 const fetchOpinion = async () => {
   loading.value = true
   try {
+
     await opinionStore.fetchOpinionById(opinionId.value)
   } catch (error) {
     ElMessage.error('載入意見失敗')
@@ -252,7 +254,7 @@ const fetchOpinion = async () => {
 const fetchComments = async () => {
   commentsLoading.value = true
   try {
-    const data = await commentAPI.getList(opinionId.value, { limit: 100 })
+    const data = await commentAPI.getList(opinionId.value, { limit: 50 })
     comments.value = data || []
   } catch (error) {
     console.error('Failed to fetch comments:', error)
@@ -282,6 +284,7 @@ const handleSubmitComment = async () => {
 }
 
 onMounted(async () => {
+  
   await fetchOpinion()
   await fetchComments()
 })

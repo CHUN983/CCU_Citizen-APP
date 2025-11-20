@@ -165,7 +165,8 @@ const handleRegister = async () => {
         const registerData = {
           username: form.username,
           email: form.email,
-          password: form.password
+          password: form.password,
+          // role: "admin"
         }
 
         if (form.real_name) registerData.real_name = form.real_name

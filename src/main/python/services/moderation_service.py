@@ -3,10 +3,10 @@ Moderation service for admin operations
 """
 
 from typing import Optional
-from models.opinion import OpinionStatus
-from models.notification import NotificationCreate, NotificationType
-from utils.database import get_db_cursor
-from services.notification_service import NotificationService
+from ..models.opinion import OpinionStatus
+from ..models.notification import NotificationCreate, NotificationType
+from ..utils.database import get_db_cursor
+from ..services.notification_service import NotificationService
 
 
 class ModerationService:
@@ -139,6 +139,7 @@ class ModerationService:
                 )
 
             # Notify owner (non-blocking, don't fail if notification fails)
+                
             try:
                 NotificationService.create_notification(
                     NotificationCreate(
@@ -152,7 +153,6 @@ class ModerationService:
             except Exception as notif_error:
                 print(f"Error creating notification: {notif_error}")
                 # Continue anyway - notification failure should not fail the moderation
-
             return True
         except Exception as e:
             print(f"Error changing status: {e}")

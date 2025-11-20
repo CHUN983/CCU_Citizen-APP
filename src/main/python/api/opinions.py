@@ -3,12 +3,12 @@ Opinion API routes
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Optional
-from models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus
-from models.comment import Comment, CommentCreate
-from models.vote import VoteCreate
-from services.opinion_service import OpinionService
-from api.auth import get_current_user
+from typing import Optional, List
+from ..models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus
+from ..models.comment import Comment, CommentCreate
+from ..models.vote import VoteCreate, VoteStats
+from ..services.opinion_service import OpinionService
+from ..api.auth import get_current_user
 
 router = APIRouter(prefix="/opinions", tags=["Opinions"])
 
@@ -18,6 +18,8 @@ async def create_opinion(
     opinion_data: OpinionCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    print("DEBUG opinion_data:", opinion_data)
+    print("DEBUG current_user:", current_user)
     """Create a new opinion"""
     opinion = OpinionService.create_opinion(current_user["user_id"], opinion_data)
 
@@ -68,7 +70,7 @@ async def add_comment(
 
     return comment
 
-@router.get("/{opinion_id}/comments", response_model=list[Comment])
+@router.get("/{opinion_id}/comments", response_model=List[Comment])
 async def get_comments(
     opinion_id: int,
     limit: int = Query(50, ge=1, le=500)
@@ -81,10 +83,8 @@ async def get_comments(
         raise HTTPException(status_code=404, detail="Opinion not found")
 
     comments = OpinionService.get_comments_by_opinion_id(opinion_id, limit)
-    print("DEBUG comments:", comments)
 
     return comments
-
 
 @router.post("/{opinion_id}/vote", status_code=200)
 async def vote_opinion(
@@ -92,6 +92,7 @@ async def vote_opinion(
     vote_data: VoteCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    print("DEBUG vote_data:", vote_data)
     """Vote on an opinion"""
     # Check if opinion exists
     opinion = OpinionService.get_opinion_by_id(opinion_id)
@@ -105,6 +106,16 @@ async def vote_opinion(
 
     return {"message": "Vote recorded successfully"}
 
+@router.get("/{opinion_id}/votes", response_model=VoteStats)
+async def get_vote_stats(opinion_id: int):
+    """Get like/support counts for an opinion"""
+    # 先確認 opinion 是否存在
+    opinion = OpinionService.get_opinion_by_id(opinion_id)
+    if not opinion:
+        raise HTTPException(status_code=404, detail="Opinion not found")
+
+    stats = OpinionService.get_vote_stats(opinion_id)
+    return stats
 
 @router.post("/{opinion_id}/collect", status_code=200)
 async def collect_opinion(

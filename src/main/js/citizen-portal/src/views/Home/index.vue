@@ -63,11 +63,11 @@
             <el-empty v-if="!loading && recentOpinions.length === 0" description="暫無意見" />
             <div v-else class="opinion-list">
               <div
-                v-for="opinion in recentOpinions"
-                :key="opinion.id"
+                v-for="(opinion, index) in recentOpinions"
+                :key="index"
                 class="opinion-item"
                 @click="$router.push(`/opinions/${opinion.id}`)"
-              >
+              > 
                 <h4>{{ opinion.title }}</h4>
                 <p class="description">{{ opinion.content }}</p>
                 <div class="meta">
@@ -115,6 +115,7 @@ const getStatusText = (status) => {
 
 onMounted(async () => {
   loading.value = true
+
   try {
     const data = await opinionStore.fetchOpinions({ page: 1, page_size: 5, status: 'approved' })
     recentOpinions.value = data.items || []
@@ -125,6 +126,7 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  console.log("Recent Opinions Loaded:", recentOpinions.value)
 })
 </script>
 

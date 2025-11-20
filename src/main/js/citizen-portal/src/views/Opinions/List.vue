@@ -88,7 +88,7 @@
             <div v-else class="opinions-container">
               <div
                 v-for="opinion in opinions"
-                :key="opinion.id"
+                :key="index"
                 class="opinion-card"
                 @click="$router.push(`/opinions/${opinion.id}`)"
               >
@@ -270,11 +270,11 @@ onMounted(async () => {
   // Fetch opinions
   try {
     await fetchOpinions()
+    
   } catch (error) {
     console.error('Failed to fetch opinions:', error)
     // Don't block rendering on error
   }
-
   // Set up auto-refresh every 30 seconds
   refreshInterval = setInterval(() => {
     fetchOpinions()

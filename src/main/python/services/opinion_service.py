@@ -3,15 +3,15 @@ Opinion service for managing citizen submissions
 """
 
 from typing import List, Optional
-from models.opinion import (
+from ..models.opinion import (
     Opinion, OpinionCreate, OpinionUpdate, OpinionWithUser,
     OpinionList, OpinionStatus
 )
-from models.comment import Comment, CommentCreate
-from models.vote import Vote, VoteCreate
-from models.notification import NotificationCreate, NotificationType
-from utils.database import get_db_cursor
-from services.notification_service import NotificationService
+from ..models.comment import Comment, CommentCreate
+from ..models.vote import Vote, VoteCreate, VoteStats, VoteType
+from ..models.notification import NotificationCreate, NotificationType
+from ..utils.database import get_db_cursor, get_db_connection
+from ..services.notification_service import NotificationService
 
 
 class OpinionService:
@@ -61,7 +61,6 @@ class OpinionService:
             # 這裡你可以先 print / log，再丟出給 FastAPI
             print(f"[ERROR] create_opinion failed at step '{current_step}': {e}")
             return None
-        
 
     @staticmethod
     def get_opinion_by_id(opinion_id: int, increment_view: bool = False) -> Optional[OpinionWithUser]:
@@ -83,6 +82,8 @@ class OpinionService:
         """
 
         with get_db_cursor() as cursor:
+
+            
             cursor.execute(query, (opinion_id,))
             opinion_row = cursor.fetchone()
 
@@ -198,7 +199,6 @@ class OpinionService:
                 (comment_id,)
             )
             return Comment(**cursor.fetchone())
-        
     @staticmethod
     def get_comments_by_opinion_id(opinion_id: int, limit: int = 50) -> List[Comment]:
         """Get list of comments for an opinion"""
@@ -215,7 +215,6 @@ class OpinionService:
             cursor.execute(query, (opinion_id, limit))
             rows = cursor.fetchall()
             return [Comment(**row) for row in rows]
-
     @staticmethod
     def vote_opinion(opinion_id: int, user_id: int, vote_data: VoteCreate) -> bool:
         """Vote on an opinion"""
@@ -233,6 +232,33 @@ class OpinionService:
             print(f"Error voting: {e}")
             return False
 
+    @staticmethod
+    def get_vote_stats(opinion_id: int) -> VoteStats:
+        """Get like/support counts for an opinion from votes table"""
+        query = """
+            SELECT
+                SUM(CASE WHEN vote_type = %s THEN 1 ELSE 0 END) AS like_count,
+                SUM(CASE WHEN vote_type = %s THEN 1 ELSE 0 END) AS support_count
+            FROM votes
+            WHERE opinion_id = %s
+        """
+
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                query,
+                (VoteType.LIKE.value, VoteType.DISLIKE.value, opinion_id)
+            )
+            row = cursor.fetchone() or {}
+
+            like_count = row.get('like_count') or 0
+            support_count = row.get('support_count') or 0
+
+            return VoteStats(
+                opinion_id=opinion_id,
+                like_count=like_count,
+                support_count=support_count
+            )
+    
     @staticmethod
     def collect_opinion(opinion_id: int, user_id: int) -> bool:
         """Add opinion to user's collection"""
