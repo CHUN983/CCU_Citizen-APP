@@ -8,7 +8,7 @@ from ..models.opinion import (
     OpinionList, OpinionStatus
 )
 from ..models.comment import Comment, CommentCreate
-from ..models.vote import Vote, VoteCreate, VoteStats, VoteType
+from ..models.vote import Vote, VoteCreate, VoteType
 from ..models.notification import NotificationCreate, NotificationType
 from ..utils.database import get_db_cursor, get_db_connection
 from ..services.notification_service import NotificationService
@@ -92,11 +92,13 @@ class OpinionService:
                 )
 
         query = """
-            SELECT o.*, u.username, u.full_name as user_full_name,
-                   (SELECT COUNT(*) FROM votes WHERE opinion_id = o.id) as vote_count,
+            SELECT o.*, c.name as category_name, u.username, u.full_name as user_full_name,
+                   (SELECT COUNT(*) FROM votes v WHERE v.opinion_id = o.id AND v.vote_type='like') as upvotes,
+                   (SELECT COUNT(*) FROM votes v WHERE v.opinion_id = o.id AND v.vote_type='support') as downvotes,
                    (SELECT COUNT(*) FROM comments WHERE opinion_id = o.id AND is_deleted = FALSE) as comment_count
             FROM opinions o
             JOIN users u ON o.user_id = u.id
+            LEFT JOIN categories c ON o.category_id = c.id
             WHERE o.id = %s
         """
 
@@ -176,11 +178,13 @@ class OpinionService:
         count_query = f"SELECT COUNT(*) as total FROM opinions o WHERE {where_sql}"
 
         data_query = f"""
-            SELECT o.*, u.username, u.full_name as user_full_name,
-                   (SELECT COUNT(*) FROM votes WHERE opinion_id = o.id) as vote_count,
+            SELECT o.*, c.name as category_name, u.username, u.full_name as user_full_name,
+                   (SELECT COUNT(*) FROM votes v WHERE v.opinion_id = o.id AND v.vote_type='like') as upvotes,
+                   (SELECT COUNT(*) FROM votes v WHERE v.opinion_id = o.id AND v.vote_type='support') as downvotes,
                    (SELECT COUNT(*) FROM comments WHERE opinion_id = o.id AND is_deleted = FALSE) as comment_count
             FROM opinions o
             JOIN users u ON o.user_id = u.id
+            LEFT JOIN categories c ON o.category_id = c.id
             WHERE {where_sql}
             ORDER BY o.created_at DESC
             LIMIT %s OFFSET %s
@@ -282,32 +286,6 @@ class OpinionService:
             print(f"Error voting: {e}")
             return False
 
-    @staticmethod
-    def get_vote_stats(opinion_id: int) -> VoteStats:
-        """Get like/support counts for an opinion from votes table"""
-        query = """
-            SELECT
-                SUM(CASE WHEN vote_type = %s THEN 1 ELSE 0 END) AS like_count,
-                SUM(CASE WHEN vote_type = %s THEN 1 ELSE 0 END) AS support_count
-            FROM votes
-            WHERE opinion_id = %s
-        """
-
-        with get_db_cursor() as cursor:
-            cursor.execute(
-                query,
-                (VoteType.LIKE.value, VoteType.DISLIKE.value, opinion_id)
-            )
-            row = cursor.fetchone() or {}
-
-            like_count = row.get('like_count') or 0
-            support_count = row.get('support_count') or 0
-
-            return VoteStats(
-                opinion_id=opinion_id,
-                like_count=like_count,
-                support_count=support_count
-            )
     
     @staticmethod
     def collect_opinion(opinion_id: int, user_id: int) -> bool:

@@ -70,15 +70,29 @@
               > 
                 <h4>{{ opinion.title }}</h4>
                 <p class="description">{{ opinion.content }}</p>
-                <div class="meta">
-                  <el-tag size="small" type="info">{{ opinion.category_name }}</el-tag>
-                  <span class="status">{{ getStatusText(opinion.status) }}</span>
-                  <span class="votes">
-                    <el-icon><CaretTop /></el-icon>
+                <div class="opinion-meta">
+                  <el-tag size="small">{{ opinion.category_name }}</el-tag>
+
+                  <!-- tags -->
+                  <template v-if="opinion.tags?.length">
+                    <el-tag
+                      v-for="tag in opinion.tags"
+                      :key="tag"
+                      size="small"
+                      type="info"
+                      style="margin-left:6px"
+                    >
+                      {{ tag }}
+                    </el-tag>
+                  </template>
+                  <!-- status and votes -->
+                  <el-tag class="opinion-status" :type="getStatusText(opinion.status)">{{ getStatusText(opinion.status) }}</el-tag>
+                  <el-tag class="votes">
+                    <el-icon color="#67c23a"><CaretTop /></el-icon>
                     {{ opinion.upvotes }}
-                    <el-icon><CaretBottom /></el-icon>
+                    <el-icon color="#f56c6c"><CaretBottom /></el-icon>
                     {{ opinion.downvotes }}
-                  </span>
+                  </el-tag>
                 </div>
               </div>
             </div>
@@ -226,12 +240,22 @@ onMounted(async () => {
   -webkit-box-orient: vertical;
 }
 
-.meta {
+.opinion-meta {
   display: flex;
   align-items: center;
   gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
   font-size: 14px;
   color: #909399;
+}
+
+.opinion-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-top: 10px;
+  border-top: 1px solid #ebeef5;
 }
 
 .votes {

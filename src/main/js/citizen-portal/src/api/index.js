@@ -15,7 +15,6 @@ export const opinionAPI = {
   update: (id, data) => axios.put(`/opinions/${id}`, data),
   delete: (id) => axios.delete(`/opinions/${id}`),
   vote: (id, voteType) => axios.post(`/opinions/${id}/vote`, { vote_type: voteType }),
-  getVotes: (id) => axios.get(`/opinions/${id}/votes`),
   bookmark: (id) => axios.post(`/opinions/${id}/collect`),
   getBookmarkStatus: (id) => axios.get(`/opinions/${id}/collect`),
   getBookmarked: (params) => axios.get('/opinions/collect', { params }),

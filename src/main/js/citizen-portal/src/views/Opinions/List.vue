@@ -88,7 +88,7 @@
             <div v-else class="opinions-container">
               <div
                 v-for="opinion in opinions"
-                :key="index"
+                :key="opinion.id"
                 class="opinion-card"
                 @click="$router.push(`/opinions/${opinion.id}`)"
               >
@@ -98,12 +98,26 @@
 
                   <div class="opinion-meta">
                     <el-tag size="small">{{ opinion.category_name }}</el-tag>
+
+                    <!-- tags -->
+                    <template v-if="opinion.tags?.length">
+                      <el-tag
+                        v-for="tag in opinion.tags"
+                        :key="tag"
+                        size="small"
+                        type="info"
+                        style="margin-left:6px"
+                      >
+                        {{ tag }}
+                      </el-tag>
+                    </template>
+
                     <el-tag size="small" :type="getStatusType(opinion.status)">
                       {{ getStatusText(opinion.status) }}
                     </el-tag>
                     <span class="author">
                       <el-icon><User /></el-icon>
-                      {{ opinion.author_name || '匿名' }}
+                      {{ opinion.username || '匿名' }}
                     </span>
                     <span class="date">
                       <el-icon><Clock /></el-icon>

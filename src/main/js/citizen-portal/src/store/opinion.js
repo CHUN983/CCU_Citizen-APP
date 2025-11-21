@@ -21,6 +21,7 @@ export const useOpinionStore = defineStore('opinion', {
         const data = await opinionAPI.getList(params)
         this.opinions = data.items || []
         this.total = data.total || 0
+
         return data
       } catch (error) {
         throw error
@@ -32,8 +33,7 @@ export const useOpinionStore = defineStore('opinion', {
     async fetchOpinionById(id) {
       this.loading = true
       try {
-          const [voteStats, opinionData, collectStatus] = await Promise.all([
-            opinionAPI.getVotes(id),
+          const [ opinionData, collectStatus] = await Promise.all([
             opinionAPI.getById(id),
             opinionAPI.getBookmarkStatus(id)
           ])
@@ -41,8 +41,6 @@ export const useOpinionStore = defineStore('opinion', {
           // 把 like/support 數量合併進 currentOpinion
           this.currentOpinion = {
             ...opinionData,
-            upvotes: voteStats.like_count ?? 0,
-            downvotes: voteStats.support_count ?? 0,
             is_bookmarked: collectStatus.is_collected ?? false
           }
 

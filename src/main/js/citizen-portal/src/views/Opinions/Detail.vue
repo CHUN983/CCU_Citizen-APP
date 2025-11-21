@@ -16,6 +16,15 @@
               {{ getStatusText(opinion.status) }}
             </el-tag>
           </div>
+          <div v-if="opinion.tags.length > 0" class="tags-display">
+            <el-tag
+              v-for="tag in opinion.tags"
+              :key="tag"
+              style="margin-right: 10px; margin-top: 10px"
+            >
+              {{ tag }}
+            </el-tag>
+          </div>
         </div>
 
         <!-- Opinion Content -->
@@ -192,7 +201,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
 import { useOpinionStore } from '../../store/opinion'
@@ -281,11 +290,11 @@ const handleBookmark = async () => {
   }
 }
 
-const fetchOpinion = async () => {
+const fetchOpinion = async (id = opinionId.value) => {
   loading.value = true
   try {
 
-    await opinionStore.fetchOpinionById(opinionId.value)
+    await opinionStore.fetchOpinionById(id)
   } catch (error) {
     ElMessage.error('載入意見失敗')
     router.back()
@@ -294,10 +303,10 @@ const fetchOpinion = async () => {
   }
 }
 
-const fetchComments = async () => {
+const fetchComments = async (id = opinionId.value) => {
   commentsLoading.value = true
   try {
-    const data = await commentAPI.getList(opinionId.value, { limit: 50 })
+    const data = await commentAPI.getList(id, { limit: 50 })
     comments.value = data || []
   } catch (error) {
     console.error('Failed to fetch comments:', error)
@@ -326,19 +335,17 @@ const handleSubmitComment = async () => {
   }
 }
 
-const getMediaUrl = (media) => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-  return `${baseUrl}/media/files/${media.media_type}/${media.file_path.split('/').pop()}`
-}
-
-const previewMedia = (media) => {
-  window.open(getMediaUrl(media), '_blank')
-}
-
 onMounted(async () => {
   
   await fetchOpinion()
   await fetchComments()
+})
+
+watch(opinionId, (newId, oldId) => {
+  if (newId !== oldId) {
+    fetchOpinion(newId)
+    fetchComments()
+  }
 })
 </script>
 
@@ -510,5 +517,9 @@ onMounted(async () => {
 .media-audio {
   width: 100%;
   max-width: 320px;
+}
+
+.tags-display {
+  margin-top: 10px;
 }
 </style>
