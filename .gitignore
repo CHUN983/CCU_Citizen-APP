@@ -67,6 +67,7 @@ logs/
 !**/.vscode/*.json
 *.xlsx
 output/
+uploads/
 
 # Temporary files
 tmp/

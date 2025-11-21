@@ -11,7 +11,7 @@ from ..models.comment import Comment, CommentCreate
 from ..models.vote import Vote, VoteCreate, VoteStats, VoteType
 from ..models.notification import NotificationCreate, NotificationType
 from ..utils.database import get_db_cursor, get_db_connection
-from ..services.notification_service import NotificationService, MilestoneNotificationService
+from ..services.notification_service import NotificationService
 
 
 class OpinionService:
@@ -195,7 +195,7 @@ class OpinionService:
             cursor.execute(data_query, params + [page_size, offset])
             opinions = cursor.fetchall()
 
-            # Get tags and media for each opinion
+            # Get tags for each opinion
             for opinion in opinions:
                 cursor.execute(
                     """SELECT t.name FROM tags t
@@ -204,16 +204,6 @@ class OpinionService:
                     (opinion['id'],)
                 )
                 opinion['tags'] = [row['name'] for row in cursor.fetchall()]
-
-                cursor.execute(
-                    """SELECT id, media_type, file_path, file_size, mime_type, created_at
-                       FROM opinion_media
-                       WHERE opinion_id = %s
-                       ORDER BY created_at ASC""",
-                    (opinion['id'],)
-                )
-                media = cursor.fetchall()
-                opinion['media'] = media if media else []
 
             items = [OpinionWithUser(**opinion) for opinion in opinions]
 
@@ -236,22 +226,19 @@ class OpinionService:
             cursor.execute(query, (opinion_id, user_id, comment_data.content))
             comment_id = cursor.lastrowid
 
-            # Get opinion owner and comment count
-            cursor.execute(
-                """SELECT user_id,
-                   (SELECT COUNT(*) FROM comments WHERE opinion_id = %s AND is_deleted = FALSE) as comment_count
-                   FROM opinions WHERE id = %s""",
-                (opinion_id, opinion_id)
-            )
-            opinion_info = cursor.fetchone()
+            # Get opinion owner and notify
+            cursor.execute("SELECT user_id FROM opinions WHERE id = %s", (opinion_id,))
+            opinion_owner = cursor.fetchone()
 
-            if opinion_info and opinion_info['user_id'] != user_id:
-                # Check milestone notification
-                MilestoneNotificationService.check_and_notify_milestone(
-                    opinion_id=opinion_id,
-                    milestone_type='comment',
-                    current_count=opinion_info['comment_count'],
-                    opinion_owner_id=opinion_info['user_id']
+            if opinion_owner and opinion_owner['user_id'] != user_id:
+                NotificationService.create_notification(
+                    NotificationCreate(
+                        user_id=opinion_owner['user_id'],
+                        opinion_id=opinion_id,
+                        type=NotificationType.COMMENT,
+                        title="New comment on your opinion",
+                        content=f"Someone commented on your opinion"
+                    )
                 )
 
             # Fetch created comment
@@ -290,27 +277,6 @@ class OpinionService:
         try:
             with get_db_cursor() as cursor:
                 cursor.execute(query, (opinion_id, user_id, vote_data.vote_type.value))
-
-                # Only check milestones for LIKE votes
-                if vote_data.vote_type == VoteType.LIKE:
-                    # Get opinion owner and like count
-                    cursor.execute(
-                        """SELECT o.user_id,
-                           (SELECT COUNT(*) FROM votes WHERE opinion_id = %s AND vote_type = 'like') as like_count
-                           FROM opinions o WHERE o.id = %s""",
-                        (opinion_id, opinion_id)
-                    )
-                    opinion_info = cursor.fetchone()
-
-                    if opinion_info and opinion_info['user_id'] != user_id:
-                        # Check milestone notification
-                        MilestoneNotificationService.check_and_notify_milestone(
-                            opinion_id=opinion_id,
-                            milestone_type='like',
-                            current_count=opinion_info['like_count'],
-                            opinion_owner_id=opinion_info['user_id']
-                        )
-
                 return True
         except Exception as e:
             print(f"Error voting: {e}")
@@ -491,15 +457,4 @@ class OpinionService:
             cursor.execute(
                 "INSERT IGNORE INTO opinion_tags (opinion_id, tag_id) VALUES (%s, %s)",
                 (opinion_id, tag_id)
-            )
-
-    @staticmethod
-    def _add_media_files(cursor, opinion_id: int, media_files: List[dict]):
-        """Helper to add media files to opinion"""
-        for media_file in media_files:
-            cursor.execute(
-                """INSERT INTO opinion_media (opinion_id, media_type, file_path, file_size, mime_type)
-                   VALUES (%s, %s, %s, %s, %s)""",
-                (opinion_id, media_file.get('media_type'), media_file.get('file_path'),
-                 media_file.get('file_size'), media_file.get('mime_type'))
             )

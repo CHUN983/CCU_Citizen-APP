@@ -41,20 +41,6 @@ export const notificationAPI = {
   markAsRead: (id) => axios.post(`/notifications/${id}/read`)
 }
 
-// Media APIs
-export const mediaAPI = {
-  upload: (file) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    return axios.post('/media/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-  },
-  getFileUrl: (mediaType, filename) => `/media/files/${mediaType}/${filename}`,
-  getThumbnailUrl: (filename) => `/media/thumbnails/${filename}`
-}
 
 //Media APIs
 export const mediaAPI = {
