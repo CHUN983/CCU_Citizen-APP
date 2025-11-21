@@ -23,31 +23,46 @@
           <p>{{ opinion.content }}</p>
         </div>
 
-        <!-- Media Attachments -->
-        <div v-if="opinion.media && opinion.media.length > 0" class="media-section">
-          <el-divider content-position="left">附件</el-divider>
+        <!-- Media Section -->
+        <div
+          v-if="opinion.media && opinion.media.length"
+          class="media-section"
+        >
+          <h3 class="media-title">相關多媒體</h3>
           <div class="media-grid">
-            <div
-              v-for="media in opinion.media"
-              :key="media.id"
-              class="media-item"
+            <template
+              v-for="m in opinion.media"
+              :key="m.id || m.filename"
             >
-              <img
-                v-if="media.media_type === 'image'"
-                :src="getMediaUrl(media)"
-                :alt="opinion.title"
+              <!-- 圖片 -->
+              <el-image
+                v-if="m.media_type === 'image' || m.media_type === 'images'"
+                :src="m.thumbnail_url || m.url"
+                :preview-src-list="[m.url]"
+                fit="cover"
                 class="media-image"
-                @click="previewMedia(media)"
               />
+
+              <!-- 影片 -->
               <video
-                v-else-if="media.media_type === 'video'"
-                :src="getMediaUrl(media)"
-                class="media-video"
+                v-else-if="m.media_type === 'video' || m.media_type === 'videos'"
                 controls
+                class="media-video"
               >
+                <source :src="m.url" :type="m.mime_type || 'video/mp4'" />
                 您的瀏覽器不支援影片播放
               </video>
-            </div>
+
+              <!-- 音訊 -->
+              <audio
+                v-else-if="m.media_type === 'audio'"
+                controls
+                class="media-audio"
+              >
+                <source :src="m.url" :type="m.mime_type || 'audio/mpeg'" />
+                您的瀏覽器不支援音訊播放
+              </audio>
+            </template>
           </div>
         </div>
 
@@ -465,38 +480,35 @@ onMounted(async () => {
 }
 
 .media-section {
-  margin: 20px 0;
+  margin-top: 20px;
+}
+
+.media-title {
+  margin-bottom: 10px;
+  font-weight: 600;
 }
 
 .media-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 15px;
-  margin-top: 15px;
-}
-
-.media-item {
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #f5f7fa;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .media-image {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  cursor: pointer;
-  transition: transform 0.3s;
-}
-
-.media-image:hover {
-  transform: scale(1.05);
+  width: 160px;
+  height: 120px;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .media-video {
+  max-width: 320px;
+  max-height: 240px;
+  border-radius: 6px;
+}
+
+.media-audio {
   width: 100%;
-  max-height: 300px;
-  border-radius: 8px;
+  max-width: 320px;
 }
 </style>

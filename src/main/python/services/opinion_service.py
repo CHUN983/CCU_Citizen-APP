@@ -43,10 +43,25 @@ class OpinionService:
                     current_step = "insert_tags"
                     OpinionService._add_tags(cursor, opinion_id, opinion_data.tags)
 
-                # Add media files if provided
-                if opinion_data.media_files:
+                # Add media if provided
+                if opinion_data.media:
                     current_step = "insert_media"
-                    OpinionService._add_media_files(cursor, opinion_id, opinion_data.media_files)
+                    media_query = """
+                        INSERT INTO opinion_media (opinion_id, media_type, file_path, file_size, mime_type)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """
+                    media_values = []
+                    for m in opinion_data.media:
+                        media_values.append(
+                            (
+                                opinion_id,
+                                m.media_type.value,  # Enum -> 'image' / 'video' / 'audio'
+                                m.file_path,
+                                m.file_size,
+                                m.mime_type,
+                            )
+                        )
+                    cursor.executemany(media_query, media_values)
 
                 # Log history
                 current_step = "insert_history"
@@ -104,16 +119,36 @@ class OpinionService:
             tags = [row['name'] for row in cursor.fetchall()]
             opinion_row['tags'] = tags
 
-            # Get media files
             cursor.execute(
-                """SELECT id, media_type, file_path, file_size, mime_type, created_at
-                   FROM opinion_media
-                   WHERE opinion_id = %s
-                   ORDER BY created_at ASC""",
+                """
+                SELECT 
+                    id,
+                    opinion_id,
+                    media_type,
+                    file_path,
+                    file_size,
+                    mime_type,
+                    created_at
+                FROM opinion_media
+                WHERE opinion_id = %s
+                ORDER BY created_at ASC
+                """,
                 (opinion_id,)
             )
-            media = cursor.fetchall()
-            opinion_row['media'] = media if media else []
+            media_rows = cursor.fetchall()  # list[dict]
+
+            # Process media filename/url/thumbnail_url
+            for m in media_rows:
+                filename = m["file_path"].split("/")[-1]
+                m["filename"] = filename
+                m["url"] = f"uploads/{m['media_type']}/{filename}"
+                if m["media_type"] == "image":
+                    m["thumbnail_url"] = f"uploads/thumbnails/{filename}"
+                else:
+                    m["thumbnail_url"] = None
+
+            # 這裡可以直接給 Pydantic 處理 nested model
+            opinion_row['media'] = media_rows
 
             return OpinionWithUser(**opinion_row)
 

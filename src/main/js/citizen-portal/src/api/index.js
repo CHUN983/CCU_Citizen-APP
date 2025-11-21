@@ -55,3 +55,31 @@ export const mediaAPI = {
   getFileUrl: (mediaType, filename) => `/media/files/${mediaType}/${filename}`,
   getThumbnailUrl: (filename) => `/media/thumbnails/${filename}`
 }
+
+//Media APIs
+export const mediaAPI = {
+  // 單檔上傳
+  upload: async (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const res = await axios.post('/media/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return res
+  },
+
+  // 多檔上傳
+  uploadMultiple: async (files) => {
+    const formData = new FormData()
+    files.forEach(f => {
+      formData.append('files', f)  // 後端的 File(...) key
+    })
+
+    const res = await axios.post('/media/upload-multiple', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    console.log('mediaAPI.uploadMultiple response:', res)
+    return res
+  }
+}

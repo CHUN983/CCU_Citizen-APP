@@ -27,10 +27,17 @@ class MediaType(str, Enum):
 
 class OpinionMediaBase(BaseModel):
     """Base opinion media model"""
-    media_type: MediaType
     file_path: str
-    file_size: Optional[int] = None
+    file_size: int
+    filename: Optional[str] = None
+    media_type: MediaType
     mime_type: Optional[str] = None
+    url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    
+    
+    
+    
 
 
 class OpinionMediaCreate(OpinionMediaBase):
@@ -40,6 +47,7 @@ class OpinionMediaCreate(OpinionMediaBase):
 
 class OpinionMedia(OpinionMediaBase):
     """Complete opinion media model"""
+
     id: int
     opinion_id: int
     created_at: datetime
@@ -65,6 +73,8 @@ class OpinionCreate(OpinionBase):
     media_files: Optional[List[dict]] = []  # List of uploaded media file info
     status: str = "pending"  # Accept string status for easier frontend integration
 
+    media: Optional[List[OpinionMediaCreate]] = None
+
 
 class OpinionUpdate(BaseModel):
     """Opinion update model"""
@@ -89,8 +99,8 @@ class Opinion(OpinionBase):
     updated_at: datetime
 
     # Related data
-    media: Optional[List[OpinionMedia]] = []
-    tags: Optional[List[str]] = []
+    media: List[OpinionMedia] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
     vote_count: Optional[int] = 0
     comment_count: Optional[int] = 0
 
@@ -102,6 +112,8 @@ class OpinionWithUser(Opinion):
     """Opinion with user information"""
     username: str
     user_full_name: Optional[str] = None
+
+    media: List[OpinionMedia] = Field(default_factory=list)
 
 
 class OpinionList(BaseModel):

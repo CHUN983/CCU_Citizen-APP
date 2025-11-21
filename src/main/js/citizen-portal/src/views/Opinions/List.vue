@@ -220,7 +220,6 @@ const fetchOpinions = async () => {
     if (filters.status) params.status = filters.status
     if (filters.sort_by) params.sort_by = filters.sort_by
 
-    console.log('params:', params)
 
     const data = await opinionStore.fetchOpinions(params)
     total.value = data.total || 0
@@ -261,7 +260,7 @@ onMounted(async () => {
   // Fetch categories
   try {
     await opinionStore.fetchCategories()
-    console.log('categories:', categories.value)
+
   } catch (error) {
     console.error('Failed to fetch categories:', error)
     // Don't block rendering on error
