@@ -192,11 +192,16 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 
 -- Insert default categories (初始分類)
 INSERT INTO categories (name, parent_id, description) VALUES
-('交通運輸', NULL, '道路、大眾運輸、停車等相關議題'),
-('環境保護', NULL, '環境清潔、綠化、污染等議題'),
-('公共設施', NULL, '公園、圖書館、運動場等設施'),
-('社會福利', NULL, '社會服務、福利政策等議題'),
-('其他', NULL, '其他城市規劃相關議題');
+('交通局', NULL, '道路、大眾運輸、停車等相關議題'),
+('環保局', NULL, '環境清潔、綠化、污染等議題'),
+('工務局', NULL, '公園、施工、路燈、運動場等設施'),
+('社會局', NULL, '社會服務、福利政策等議題'),
+('衛生局', NULL, '醫療、食品安全、衛生檢舉'),
+('警察局', NULL, '治安、噪音糾紛、違停檢舉'),
+('教育局', NULL, '體育場所、圖書館、教育事務、學區劃分'),
+('都發局', NULL, '都市規劃、土地、開發案'),
+('民政局', NULL, '社區事務、公墓、鄰里投訴'),
+('其他', NULL, '制度、行政流程、抱怨政府效率、其他城市規劃相關議題');
 
 -- Insert default admin user (password: admin123, please change in production)
 -- Password hash for 'admin123' using bcrypt
