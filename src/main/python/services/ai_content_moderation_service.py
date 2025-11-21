@@ -559,12 +559,24 @@ class AIContentModerationService:
         moderation_reason: str,
         needs_manual_review: bool
     ) -> bool:
-        """更新意見的審核狀態"""
+        """更新意見的審核狀態（包含真正的 status）"""
         try:
+            # 根據 AI 審核結果決定主狀態
+            if needs_manual_review:
+                final_status = "pending"
+            elif auto_moderation_status == "approved":
+                final_status = "approved"
+            elif auto_moderation_status == "rejected":
+                final_status = "rejected"
+            else:
+                final_status = "pending"
+
             with get_db_cursor() as cursor:
                 cursor.execute("""
                     UPDATE opinions
-                    SET auto_moderation_status = %s,
+                    SET 
+                        status = %s,
+                        auto_moderation_status = %s,
                         auto_moderation_score = %s,
                         auto_category_id = %s,
                         moderation_reason = %s,
@@ -572,15 +584,19 @@ class AIContentModerationService:
                         category_id = COALESCE(category_id, %s)
                     WHERE id = %s
                 """, (
+                    final_status,
                     auto_moderation_status,
                     auto_moderation_score,
                     auto_category_id,
                     moderation_reason,
                     needs_manual_review,
-                    auto_category_id,  # 如果原本沒有category_id,就用AI建議的
+                    auto_category_id,
                     opinion_id
                 ))
+
                 return True
+
         except Exception as e:
             print(f"Error updating opinion moderation status: {e}")
             return False
+
