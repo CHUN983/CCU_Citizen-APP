@@ -18,6 +18,15 @@ class OpinionStatus(str, Enum):
     RESOLVED = "resolved"
 
 
+class AutoModerationStatus(str, Enum):
+    """Auto moderation status enumeration"""
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    FLAGGED = "flagged"
+    REVIEWING = "reviewing"
+
+
 class MediaType(str, Enum):
     """Media type enumeration"""
     IMAGE = "image"
@@ -97,6 +106,15 @@ class Opinion(OpinionBase):
     merged_to_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
+
+    # AI Moderation fields
+    auto_moderation_status: Optional[AutoModerationStatus] = None
+    auto_moderation_score: Optional[Decimal] = None
+    auto_category_id: Optional[int] = None
+    moderation_reason: Optional[str] = None
+    needs_manual_review: bool = False
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
 
     # Related data
     media: List[OpinionMedia] = Field(default_factory=list)
