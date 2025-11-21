@@ -23,6 +23,49 @@
           <p>{{ opinion.content }}</p>
         </div>
 
+        <!-- Media Section -->
+        <div
+          v-if="opinion.media && opinion.media.length"
+          class="media-section"
+        >
+          <h3 class="media-title">相關多媒體</h3>
+          <div class="media-grid">
+            <template
+              v-for="m in opinion.media"
+              :key="m.id || m.filename"
+            >
+              <!-- 圖片 -->
+              <el-image
+                v-if="m.media_type === 'image' || m.media_type === 'images'"
+                :src="m.thumbnail_url || m.url"
+                :preview-src-list="[m.url]"
+                fit="cover"
+                class="media-image"
+              />
+
+              <!-- 影片 -->
+              <video
+                v-else-if="m.media_type === 'video' || m.media_type === 'videos'"
+                controls
+                class="media-video"
+              >
+                <source :src="m.url" :type="m.mime_type || 'video/mp4'" />
+                您的瀏覽器不支援影片播放
+              </video>
+
+              <!-- 音訊 -->
+              <audio
+                v-else-if="m.media_type === 'audio'"
+                controls
+                class="media-audio"
+              >
+                <source :src="m.url" :type="m.mime_type || 'audio/mpeg'" />
+                您的瀏覽器不支援音訊播放
+              </audio>
+            </template>
+          </div>
+        </div>
+
         <!-- Location Info -->
         <div v-if="opinion.location" class="location-info">
           <el-icon><Location /></el-icon>
@@ -425,5 +468,38 @@ onMounted(async () => {
   .vote-buttons .el-button {
     width: 100%;
   }
+}
+
+.media-section {
+  margin-top: 20px;
+}
+
+.media-title {
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.media-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.media-image {
+  width: 160px;
+  height: 120px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.media-video {
+  max-width: 320px;
+  max-height: 240px;
+  border-radius: 6px;
+}
+
+.media-audio {
+  width: 100%;
+  max-width: 320px;
 }
 </style>

@@ -82,6 +82,25 @@
           </div>
         </el-form-item>
 
+        <el-form-item label="附件">
+          <el-upload
+            :auto-upload="false"
+            multiple
+            :limit="10"
+            :file-list="fileList"
+            :on-change="handleFileChange"
+            :on-remove="handleFileRemove"
+            list-type="picture-card"
+            accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.avi,.mov,.wmv,.flv,.webm,.mp3,.wav,.ogg,.m4a,.aac"
+          >
+            <el-icon><Plus /></el-icon>
+          </el-upload>
+          <div class="el-upload__tip">
+            支援圖片、影片、音訊，單檔上限 50MB，最多 10 檔
+          </div>
+        </el-form-item>
+
+
         <el-form-item>
           <el-alert
             type="info"
@@ -124,7 +143,9 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useOpinionStore } from '../../store/opinion'
+import { useMediaStore } from '../../store/media'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const opinionStore = useOpinionStore()
@@ -134,6 +155,9 @@ const loading = ref(false)
 const tagInput = ref('')
 
 const categories = computed(() => opinionStore.categories)
+
+const mediaStore = useMediaStore()
+const fileList = ref([])   // el-upload 的檔案列表
 
 const form = reactive({
   title: '',
@@ -169,6 +193,15 @@ const handleAddTag = () => {
   }
 }
 
+const handleFileChange = (file, newFileList) => {
+  // newFileList 是 element-plus 幫你維護的最新列表
+  fileList.value = newFileList
+}
+
+const handleFileRemove = (file, newFileList) => {
+  fileList.value = newFileList
+}
+
 const handleRemoveTag = (tag) => {
   const index = form.tags.indexOf(tag)
   if (index > -1) {
@@ -200,6 +233,41 @@ const handleSubmit = async () => {
 
         loading.value = true
 
+        // 處理檔案上傳
+        let mediaPayload = []
+
+        if (fileList.value.length > 0) {
+          // el-upload 的檔案物件裡，真正的 File 在 raw 屬性
+          const rawFiles = fileList.value
+            .map(f => f.raw)
+            .filter(Boolean)
+
+          try {
+            const uploadResult = await mediaStore.uploadMultiple(rawFiles)
+            console.log('uploadResult:', uploadResult)
+            // 後端 /media/upload-multiple 回傳結構：
+            // {
+            //   uploaded: n,
+            //   failed: m,
+            //   files: [ { filename, media_type, url, thumbnail_url, ... } | { filename, error, status } ]
+            // }
+            mediaPayload = (uploadResult.files || [])
+              .filter(f => !f.error)
+              .map(f => ({
+                filename: f.filename,
+                media_type: f.media_type,
+                file_path: f.file_path,
+                mime_type: f.mime_type,
+                file_size: f.file_size
+              }))
+          } catch (e) {
+            console.error('upload error:', e)
+            ElMessage.error('檔案上傳失敗，請稍後再試')
+            loading.value = false
+            return
+          }
+        }
+
         const submitData = {
           title: form.title,
           content: form.content,
@@ -209,6 +277,11 @@ const handleSubmit = async () => {
 
         if (form.region) submitData.region = form.region
         if (form.tags.length > 0) submitData.tags = form.tags
+
+        if (mediaPayload.length > 0) {
+          // 後端 OpinionCreate 裡有 media: List[OpinionMedia]
+          submitData.media = mediaPayload
+        }
        
         console.log('submitData:', submitData)
         await opinionStore.createOpinion(submitData)
