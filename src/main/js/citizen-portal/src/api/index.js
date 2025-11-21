@@ -38,7 +38,7 @@ export const categoryAPI = {
 // Notification APIs
 export const notificationAPI = {
   getList: (params) => axios.get('/notifications', { params }),
-  markAsRead: (id) => axios.put(`/notifications/${id}/read`)
+  markAsRead: (id) => axios.post(`/notifications/${id}/read`)
 }
 
 // Media APIs

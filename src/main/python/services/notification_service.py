@@ -55,7 +55,9 @@ class NotificationService:
 
     @staticmethod
     def mark_as_read(notification_id: int, user_id: int) -> bool:
-        """Mark notification as read"""
+        """Mark notification as read (idempotent)"""
+        print("mark_as_read: id =", notification_id, "user_id =", user_id)
+
         query = """
             UPDATE notifications
             SET is_read = TRUE
@@ -64,7 +66,18 @@ class NotificationService:
 
         with get_db_cursor() as cursor:
             cursor.execute(query, (notification_id, user_id))
-            return cursor.rowcount > 0
+
+            # 如果 rowcount = 0，不代表不存在，可能是 is_read 已經是 TRUE
+            # ➜ 改成檢查資料是否存在
+            cursor.execute(
+                "SELECT 1 FROM notifications WHERE id = %s AND user_id = %s",
+                (notification_id, user_id)
+            )
+            exists = cursor.fetchone() is not None
+
+            print("exists =", exists, "rowcount =", cursor.rowcount)
+            return exists
+
 
 
 from typing import Optional
