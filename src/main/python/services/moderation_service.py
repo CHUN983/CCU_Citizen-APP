@@ -6,7 +6,7 @@ from typing import Optional
 from ..models.opinion import OpinionStatus
 from ..models.notification import NotificationCreate, NotificationType
 from ..utils.database import get_db_cursor
-from .notification_service import NotificationService
+from ..services.notification_service import NotificationService
 
 
 class ModerationService:
@@ -49,20 +49,24 @@ class ModerationService:
                     (source_id, moderator_id, target_id)
                 )
 
-                # Notify opinion owner
+                # Notify opinion owner (non-blocking)
                 cursor.execute("SELECT user_id FROM opinions WHERE id = %s", (source_id,))
                 owner = cursor.fetchone()
 
                 if owner:
-                    NotificationService.create_notification(
-                        NotificationCreate(
-                            user_id=owner['user_id'],
-                            opinion_id=source_id,
-                            type=NotificationType.MERGED,
-                            title="Opinion merged",
-                            content=f"Your opinion has been merged with opinion #{target_id}"
+                    try:
+                        NotificationService.create_notification(
+                            NotificationCreate(
+                                user_id=owner['user_id'],
+                                opinion_id=source_id,
+                                type=NotificationType.MERGED,
+                                title="Opinion merged",
+                                content=f"Your opinion has been merged with opinion #{target_id}"
+                            )
                         )
-                    )
+                    except Exception as notif_error:
+                        print(f"Error creating notification: {notif_error}")
+                        # Continue anyway
 
                 return True
         except Exception as e:
@@ -134,7 +138,9 @@ class ModerationService:
                     (opinion_id, moderator_id, old_status, new_status.value)
                 )
 
-                # Notify owner
+            # Notify owner (non-blocking, don't fail if notification fails)
+                
+            try:
                 NotificationService.create_notification(
                     NotificationCreate(
                         user_id=opinion['user_id'],
@@ -144,8 +150,10 @@ class ModerationService:
                         content=notification_content
                     )
                 )
-
-                return True
+            except Exception as notif_error:
+                print(f"Error creating notification: {notif_error}")
+                # Continue anyway - notification failure should not fail the moderation
+            return True
         except Exception as e:
             print(f"Error changing status: {e}")
             return False

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class NotificationType(str, Enum):
     COMMENT = "comment"
+    LIKE = "like"
     STATUS_CHANGE = "status_change"
     MERGED = "merged"
     APPROVED = "approved"

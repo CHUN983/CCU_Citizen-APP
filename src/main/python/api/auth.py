@@ -10,7 +10,7 @@ from ..utils.security import get_user_from_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-
+# 根據 JWT token 獲取當前用戶的資料
 def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     """Dependency to get current user from JWT token"""
     if not authorization:
@@ -29,7 +29,7 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
 
     return user_data
 
-
+# 使用username或是email註冊新用戶
 @router.post("/register", response_model=User, status_code=201)
 async def register(user_data: UserCreate):
     """Register a new user"""
@@ -43,7 +43,7 @@ async def register(user_data: UserCreate):
 
     return user
 
-
+# 使用username和password登入，成功後回傳JWT token
 @router.post("/login", response_model=Token)
 async def login(login_data: UserLogin):
     """Login user and get JWT token"""
@@ -57,7 +57,9 @@ async def login(login_data: UserLogin):
 
     return token
 
-
+# 根據使用者id獲取當前用戶資訊(需要JWT token)
+# 呼叫此API時需在Header
+# call get_current_user
 @router.get("/me", response_model=User)
 async def get_current_user_info(current_user: dict = Depends(get_current_user)):
     """Get current user information"""

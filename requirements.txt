@@ -8,6 +8,7 @@ pydantic[email]==2.5.3
 
 # Database
 mysql-connector-python==8.3.0
+sqlalchemy==2.0.25
 
 # Security
 bcrypt==4.1.2
@@ -20,7 +21,9 @@ python-dotenv==1.0.0
 # Media Processing
 Pillow==10.2.0
 
-# Development
+# Development & Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+pytest-html==4.1.1
 httpx==0.26.0

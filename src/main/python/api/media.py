@@ -11,7 +11,8 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import FileResponse
 from PIL import Image
 from ..models.opinion import OpinionMedia, MediaType
-from ..utils.security import get_current_user
+#from ..utils.security import get_current_user
+from ..api.auth import get_current_user
 from ..models.user import User
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -157,8 +158,8 @@ async def upload_media(
             "file_path": str(file_path.relative_to(UPLOAD_DIR)),
             "file_size": final_size,
             "mime_type": file.content_type,
-            "url": f"/media/files/{media_type.value}/{unique_filename}",
-            "thumbnail_url": f"/media/thumbnails/{unique_filename}" if media_type == MediaType.IMAGE else None
+            "url": f"upload/{media_type.value}/{unique_filename}",
+            "thumbnail_url": f"upload/thumbnails/{unique_filename}" if media_type == MediaType.IMAGE else None
         }
 
     except Exception as e:
@@ -194,12 +195,12 @@ async def upload_multiple_media(
                 "status": "failed"
             })
 
+   
     return {
         "uploaded": len([r for r in results if "error" not in r]),
         "failed": len([r for r in results if "error" in r]),
         "files": results
     }
-
 
 @router.get("/files/{media_type}/{filename}")
 async def get_media_file(media_type: str, filename: str):

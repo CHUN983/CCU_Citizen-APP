@@ -32,6 +32,7 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 yarn.lock
+vite.config.js
 
 # Java
 *.class
@@ -60,8 +61,13 @@ logs/
 # Output files (use output/ directory instead)
 *.csv
 *.json
+!**/manifest.json
+!**/package.json
+!**/tsconfig.json
+!**/.vscode/*.json
 *.xlsx
 output/
+uploads/
 
 # Temporary files
 tmp/
@@ -74,5 +80,5 @@ build/
 dist/
 
 # Configuration (uncomment if sensitive)
-# .env
+.env
 # config/secrets.*

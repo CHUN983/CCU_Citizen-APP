@@ -3,7 +3,7 @@ Security utilities for authentication and authorization
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
 import jwt
@@ -60,6 +60,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """
     to_encode = data.copy()
 
+    # python 3.12 before
+    # datatime.utcnow() <==> datetime.now(timezone.utc)
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
@@ -142,27 +144,20 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
 
     # Get full user data from database
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    try:
+    with get_db_connection() as conn:
+        cursor = conn.cursor(dictionary=True)
         cursor.execute(
             "SELECT * FROM users WHERE id = %s AND is_active = TRUE",
             (user_data["user_id"],)
         )
-        user_row = cursor.fetchone()
+        row = cursor.fetchone()
 
-        if not user_row:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found or inactive"
-            )
+    if not row:
+        raise HTTPException(401, "User not found")
 
-        return User(**user_row)
+    return User(**row)
 
-    finally:
-        cursor.close()
-        conn.close()
+
 
 
 async def get_current_active_user(current_user = Depends(get_current_user)):

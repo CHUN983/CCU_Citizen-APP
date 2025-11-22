@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 class VoteType(str, Enum):
     LIKE = "like"
-    SUPPORT = "support"
+    DISLIKE = "support"
 
 
 class VoteCreate(BaseModel):

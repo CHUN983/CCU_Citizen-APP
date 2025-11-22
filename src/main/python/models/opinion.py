@@ -18,6 +18,15 @@ class OpinionStatus(str, Enum):
     RESOLVED = "resolved"
 
 
+class AutoModerationStatus(str, Enum):
+    """Auto moderation status enumeration"""
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    FLAGGED = "flagged"
+    REVIEWING = "reviewing"
+
+
 class MediaType(str, Enum):
     """Media type enumeration"""
     IMAGE = "image"
@@ -27,10 +36,17 @@ class MediaType(str, Enum):
 
 class OpinionMediaBase(BaseModel):
     """Base opinion media model"""
-    media_type: MediaType
     file_path: str
-    file_size: Optional[int] = None
+    file_size: int
+    filename: Optional[str] = None
+    media_type: MediaType
     mime_type: Optional[str] = None
+    url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    
+    
+    
+    
 
 
 class OpinionMediaCreate(OpinionMediaBase):
@@ -40,6 +56,7 @@ class OpinionMediaCreate(OpinionMediaBase):
 
 class OpinionMedia(OpinionMediaBase):
     """Complete opinion media model"""
+
     id: int
     opinion_id: int
     created_at: datetime
@@ -53,6 +70,7 @@ class OpinionBase(BaseModel):
     title: str = Field(..., min_length=5, max_length=200)
     content: str = Field(..., min_length=10)
     category_id: Optional[int] = None
+    category_name: Optional[str] = None
     region: Optional[str] = Field(None, max_length=100)
     latitude: Optional[Decimal] = None
     longitude: Optional[Decimal] = None
@@ -62,7 +80,10 @@ class OpinionBase(BaseModel):
 class OpinionCreate(OpinionBase):
     """Opinion creation model"""
     tags: Optional[List[str]] = []
-    status: OpinionStatus = OpinionStatus.DRAFT
+    media_files: Optional[List[dict]] = []  # List of uploaded media file info
+    status: str = "pending"  # Accept string status for easier frontend integration
+
+    media: Optional[List[OpinionMediaCreate]] = None
 
 
 class OpinionUpdate(BaseModel):
@@ -87,10 +108,20 @@ class Opinion(OpinionBase):
     created_at: datetime
     updated_at: datetime
 
+    # AI Moderation fields
+    auto_moderation_status: Optional[AutoModerationStatus] = None
+    auto_moderation_score: Optional[Decimal] = None
+    auto_category_id: Optional[int] = None
+    moderation_reason: Optional[str] = None
+    needs_manual_review: bool = False
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+
     # Related data
-    media: Optional[List[OpinionMedia]] = []
-    tags: Optional[List[str]] = []
-    vote_count: Optional[int] = 0
+    media: List[OpinionMedia] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
+    upvotes: Optional[int] = 0
+    downvotes: Optional[int] = 0
     comment_count: Optional[int] = 0
 
     class Config:
@@ -101,6 +132,7 @@ class OpinionWithUser(Opinion):
     """Opinion with user information"""
     username: str
     user_full_name: Optional[str] = None
+
 
 
 class OpinionList(BaseModel):
