@@ -80,7 +80,8 @@
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="vote_count" label="票數" width="80" />
+              <el-table-column prop="upvotes" label="贊同數" width="80" />
+              <el-table-column prop="downvotes" label="反對數" width="80" />
               <el-table-column prop="comment_count" label="留言數" width="90" />
               <el-table-column prop="created_at" label="建立時間" width="180">
                 <template #default="{ row }">

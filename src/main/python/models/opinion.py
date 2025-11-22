@@ -115,7 +115,6 @@ class OpinionWithUser(Opinion):
     username: str
     user_full_name: Optional[str] = None
 
-    media: List[OpinionMedia] = Field(default_factory=list)
 
 
 class OpinionList(BaseModel):

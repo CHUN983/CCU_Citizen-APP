@@ -4,7 +4,7 @@ Opinion API routes
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, List
-from ..models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus
+from ..models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus, OpinionWithUser
 from ..models.comment import Comment, CommentCreate
 from ..models.vote import VoteCreate
 from ..services.opinion_service import OpinionService
@@ -53,7 +53,7 @@ async def get_bookmarked_opinions(
         page_size=page_size
     )
 
-@router.get("/{opinion_id}", response_model=Opinion)
+@router.get("/{opinion_id}", response_model=OpinionWithUser)
 async def get_opinion(opinion_id: int):
     """Get opinion by ID"""
     opinion = OpinionService.get_opinion_by_id(opinion_id, increment_view=True)
@@ -61,6 +61,7 @@ async def get_opinion(opinion_id: int):
     if not opinion:
         raise HTTPException(status_code=404, detail="Opinion not found")
 
+    print("DEBUG opinion:", opinion)
     return opinion
 
 
