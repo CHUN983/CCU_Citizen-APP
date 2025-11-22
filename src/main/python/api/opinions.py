@@ -2,13 +2,15 @@
 Opinion API routes
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from typing import Optional, List
 from ..models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus, OpinionWithUser
 from ..models.comment import Comment, CommentCreate
 from ..models.vote import VoteCreate
 from ..services.opinion_service import OpinionService
+from ..services.ai_content_moderation_service import AIContentModerationService
 from ..api.auth import get_current_user
+import threading
 
 router = APIRouter(prefix="/opinions", tags=["Opinions"])
 
@@ -16,15 +18,42 @@ router = APIRouter(prefix="/opinions", tags=["Opinions"])
 @router.post("", response_model=Opinion, status_code=201)
 async def create_opinion(
     opinion_data: OpinionCreate,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user)
 ):
+    """Create a new opinion with AI moderation"""
     print("DEBUG opinion_data:", opinion_data)
     print("DEBUG current_user:", current_user)
-    """Create a new opinion"""
+
+    # 創建意見
     opinion = OpinionService.create_opinion(current_user["user_id"], opinion_data)
 
     if not opinion:
         raise HTTPException(status_code=400, detail="Failed to create opinion")
+
+    # 檢查是否啟用AI審核
+    ai_moderation_enabled = AIContentModerationService._get_config(
+        'ai_moderation_enabled', 'true'
+    ) == 'true'
+
+    if ai_moderation_enabled:
+        # 使用背景線程異步執行AI審核(不阻塞response)
+        from ..utils.async_moderation import sync_process_opinion_moderation
+
+        thread = threading.Thread(
+            target=sync_process_opinion_moderation,
+            args=(
+                opinion.id,
+                opinion.title,
+                opinion.content,
+                opinion_data.media_files,
+                opinion.category_id
+            )
+        )
+        thread.daemon = True
+        thread.start()
+
+        print(f"[AI Moderation] Background moderation task started for opinion {opinion.id}")
 
     return opinion
 
