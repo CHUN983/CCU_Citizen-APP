@@ -2,11 +2,14 @@
 Moderation API routes (admin only)
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
+from typing import Optional
+from datetime import datetime
 from pydantic import BaseModel
 from ..services.moderation_service import ModerationService
 from ..models.user import UserRole
 from ..api.auth import get_current_user
+from ..models.opinion_history import OpinionHistoryList
 
 router = APIRouter(prefix="/admin", tags=["Moderation"])
 
@@ -115,3 +118,25 @@ async def update_opinion_category(
         raise HTTPException(status_code=400, detail="Failed to update category")
 
     return {"message": "Category updated successfully"}
+
+
+@router.get("/history", response_model=OpinionHistoryList)
+def get_history(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    opinion_id: Optional[int] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    moderator: dict = Depends(require_moderator)
+) -> OpinionHistoryList:
+    """Get moderation history with optional filters"""
+    total = ModerationService.get_moderation_history(
+        page=page,
+        page_size=page_size,
+        opinion_id=opinion_id,
+        start_time=start_time,
+        end_time=end_time
+    )
+
+    return total
+    

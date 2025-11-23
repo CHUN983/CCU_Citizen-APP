@@ -2,9 +2,11 @@
 Moderation service for admin operations
 """
 
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 from ..models.opinion import OpinionStatus
 from ..models.notification import NotificationCreate, NotificationType
+from ..models.opinion_history import OpinionHistoryList, OpinionHistoryItem
 from ..utils.database import get_db_cursor
 from ..services.notification_service import NotificationService
 
@@ -204,3 +206,62 @@ class ModerationService:
                 "today": today,
                 "top_categories": top_categories
             }
+        
+    @staticmethod
+    def get_moderation_history(
+        page: int,
+        page_size: int,
+        opinion_id: Optional[int] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> OpinionHistoryList:
+        offset = (page - 1) * page_size
+        
+        where = ["1=1"]
+        params = []
+
+        if opinion_id:
+            where.append("h.opinion_id = %s")
+            params.append(opinion_id)
+
+        if start_time:
+            where.append("h.created_at >= %s")
+            params.append(start_time)
+
+        if end_time:
+            where.append("h.created_at <= %s")
+            params.append(end_time)
+
+        where_sql = " AND ".join(where)
+
+        count_sql = f"""
+            SELECT COUNT(*) AS total
+            FROM opinion_history h
+            WHERE {where_sql}
+        """
+
+        data_sql = f"""
+            SELECT h.*, u.username, o.title AS opinion_title
+            FROM opinion_history h
+            LEFT JOIN users u ON h.user_id = u.id
+            LEFT JOIN opinions o ON h.opinion_id = o.id
+            WHERE {where_sql}
+            ORDER BY h.created_at DESC
+            LIMIT %s OFFSET %s
+        """
+
+        with get_db_cursor() as cursor:
+            cursor.execute(count_sql, params)
+            total = cursor.fetchone()["total"]
+
+            cursor.execute(data_sql, params + [page_size, offset])
+            rows = cursor.fetchall()
+
+        items = [OpinionHistoryItem(**r) for r in rows]
+
+        return OpinionHistoryList(
+            total=total,
+            page=page,
+            page_size=page_size,
+            items=items
+        )

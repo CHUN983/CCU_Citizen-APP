@@ -58,6 +58,7 @@ export const notificationAPI = {
 
 // 統計 API
 export const adminDashboardAPI = {
-  getStats: async () => request.get('/admin/dashboard/stats')
+  getStats: async () => request.get('/admin/dashboard/stats'),
+  getHistoryList: async (params) => request.get('/admin/history', { params })
 }
 
