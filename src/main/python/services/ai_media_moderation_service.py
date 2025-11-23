@@ -9,7 +9,7 @@ import time
 import base64
 from typing import Dict, Optional
 from pathlib import Path
-from ..services.ai_content_moderation_service import ModerationDecision, AIContentModerationService
+from ..services.ai_content_moderation_service import ModerationDecision, AIContentModerationService, ModerationConfig
 
 
 class AIMediaModerationService:
@@ -43,7 +43,7 @@ class AIMediaModerationService:
         """
         調用OpenAI Vision API檢測圖片內容
         """
-        api_key = AIContentModerationService._get_config('openai_api_key')
+        api_key = ModerationConfig.openai_api_key
         model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
 
         if not api_key:

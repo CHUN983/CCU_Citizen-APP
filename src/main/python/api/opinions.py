@@ -90,7 +90,6 @@ async def get_opinion(opinion_id: int):
     if not opinion:
         raise HTTPException(status_code=404, detail="Opinion not found")
 
-    print("DEBUG opinion:", opinion)
     return opinion
 
 

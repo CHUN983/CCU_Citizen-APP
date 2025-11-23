@@ -1,4 +1,4 @@
--- Citizen Urban Planning Participation System - Database Schema
+﻿-- Citizen Urban Planning Participation System - Database Schema
 -- MVP Version 1.0
 
 -- Users table (市民、行政人員、管理員)
@@ -206,4 +206,4 @@ INSERT INTO categories (name, parent_id, description) VALUES
 -- Insert default admin user (password: admin123, please change in production)
 -- Password hash for 'admin123' using bcrypt
 INSERT INTO users (username, email, password_hash, full_name, role) VALUES
-('admin', 'admin@citizenapp.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5VO0VsVZ.hxj6', 'System Administrator', 'admin');
+('admin', 'admin@citizenapp.local', '$2b$12$sQ6ZiVBOMRTEZW2ANU6fEOSWoXWbdhei3ZCnRw6qRl87w9pvITO4q', '系統管理員', 'admin')

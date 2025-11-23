@@ -9,6 +9,18 @@ import time
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
 from ..utils.database import get_db_cursor
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+class ModerationConfig:
+    """審核配置常量"""
+    SENSITIVE_WORDS_TABLE = "sensitive_words"
+    MODERATION_LOGS_TABLE = "moderation_logs"
+    CATEGORIES_TABLE = "categories"
+    CATEGORY_KEYWORDS_TABLE = "category_keywords"
+    openai_api_key = os.getenv("OPENAI_API_KEY", "")
 
 
 class ModerationDecision:
@@ -194,7 +206,7 @@ class AIContentModerationService:
         """
         調用OpenAI Moderation API檢測內容安全性
         """
-        api_key = AIContentModerationService._get_config('openai_api_key')
+        api_key = ModerationConfig.openai_api_key
 
         if not api_key:
             print("Warning: OpenAI API key not configured")
@@ -214,6 +226,7 @@ class AIContentModerationService:
             }
 
             data = {
+                'model': 'omni-moderation-latest',
                 'input': text
             }
 
@@ -221,7 +234,7 @@ class AIContentModerationService:
                 'https://api.openai.com/v1/moderations',
                 headers=headers,
                 json=data,
-                timeout=10
+                timeout=100
             )
 
             response.raise_for_status()
@@ -267,7 +280,7 @@ class AIContentModerationService:
         """
         調用OpenAI API進行智能分類
         """
-        api_key = AIContentModerationService._get_config('openai_api_key')
+        api_key = ModerationConfig.openai_api_key
         model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
 
         if not api_key:
@@ -334,7 +347,7 @@ class AIContentModerationService:
                 'https://api.openai.com/v1/chat/completions',
                 headers=headers,
                 json=data,
-                timeout=15
+                timeout=75
             )
 
             response.raise_for_status()
@@ -481,15 +494,15 @@ class AIContentModerationService:
             needs_manual_review = False
             reason = "自動審核通過"
         elif overall_confidence < manual_review_threshold:
-            # 低信心度 -> 需要人工審核
+            # 低信心度 -> 自動拒絕
+            decision = ModerationDecision.REJECT
+            needs_manual_review = False
+            reason = f"信心度較低 ({overall_confidence:.1f}%), 自動拒絕無效意見"
+        else:
+            # 中等信心度 -> 需要審核
             decision = ModerationDecision.REVIEW
             needs_manual_review = True
-            reason = f"信心度較低 ({overall_confidence:.1f}%), 需要人工審核"
-        else:
-            # 中等信心度 -> 通過但標記
-            decision = ModerationDecision.APPROVE
-            needs_manual_review = False
-            reason = f"自動審核通過(中等信心度: {overall_confidence:.1f}%)"
+            reason = f"需要人工審核(中等信心度: {overall_confidence:.1f}%)"
 
         return {
             'decision': decision,
