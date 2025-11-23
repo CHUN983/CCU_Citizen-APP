@@ -157,3 +157,50 @@ class ModerationService:
         except Exception as e:
             print(f"Error changing status: {e}")
             return False
+
+
+    @staticmethod
+    def get_dashboard_stats() -> dict:
+        with get_db_cursor() as cursor:
+            # overall
+            cursor.execute("""
+                SELECT 
+                COUNT(*) total,
+                SUM(status='approved') approved,
+                SUM(status='pending') pending,
+                SUM(status='rejected') rejected
+                FROM opinions
+            """)
+            overall = cursor.fetchone()
+
+            # today
+            cursor.execute("""
+                SELECT 
+                COUNT(*) total,
+                SUM(status='approved') approved,
+                SUM(status='pending') pending,
+                SUM(status='rejected') rejected
+                FROM opinions
+                WHERE DATE(created_at) = CURDATE()
+            """)
+            today = cursor.fetchone()
+
+            # top categories
+            cursor.execute("""
+                SELECT 
+                o.category_id,
+                c.name AS category_name,
+                COUNT(*) AS count
+                FROM opinions o
+                LEFT JOIN categories c ON o.category_id = c.id
+                GROUP BY o.category_id, c.name
+                ORDER BY count DESC
+                LIMIT 5
+            """)
+            top_categories = cursor.fetchall()
+
+            return {
+                "overall": overall,
+                "today": today,
+                "top_categories": top_categories
+            }

@@ -29,6 +29,13 @@ class MergeRequest(BaseModel):
 class UpdateCategoryRequest(BaseModel):
     category_id: int
 
+@router.get("/dashboard/stats", status_code=200)
+async def get_dashboard_stats(
+    moderator: dict = Depends(require_moderator)
+):
+    """Get dashboard statistics"""
+    stats = ModerationService.get_dashboard_stats()
+    return stats
 
 @router.post("/opinions/{opinion_id}/approve", status_code=200)
 async def approve_opinion(

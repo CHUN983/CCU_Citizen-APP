@@ -42,52 +42,13 @@
         <!-- 內容區 -->
         <el-main>
           <div class="stats-container">
-            <el-row :gutter="20">
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <el-icon :size="40" color="#409EFF"><Document /></el-icon>
-                    <div class="stat-info">
-                      <h3>{{ stats.totalOpinions }}</h3>
-                      <p>總意見數</p>
-                    </div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <el-icon :size="40" color="#67C23A"><Check /></el-icon>
-                    <div class="stat-info">
-                      <h3>{{ stats.approvedOpinions }}</h3>
-                      <p>已核准</p>
-                    </div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <el-icon :size="40" color="#E6A23C"><Clock /></el-icon>
-                    <div class="stat-info">
-                      <h3>{{ stats.pendingOpinions }}</h3>
-                      <p>待審核</p>
-                    </div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <el-icon :size="40" color="#F56C6C"><Close /></el-icon>
-                    <div class="stat-info">
-                      <h3>{{ stats.rejectedOpinions }}</h3>
-                      <p>已拒絕</p>
-                    </div>
-                  </div>
-                </el-card>
-              </el-col>
-            </el-row>
+            <StatsRow :items="overallItems" />
+
+            <div style="margin-top:20px">
+              <StatsRow :items="todayItems" />
+            </div>
+
+            <TopCategories :categories="stats.top_categories" />
           </div>
 
           <el-card class="quick-actions" shadow="hover">
@@ -113,11 +74,15 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Grid, Document, Check, Clock, Close } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/user'
-import { opinionAPI } from '../../api'
+import { useDashBoardStore } from '../../store/DashBoard'
+
+import StatsRow from './components/StatsRow.vue'
+import TopCategories from './components/TopCategories.vue'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const dashBoardStore = useDashBoardStore()
 
 const userInfo = computed(() => userStore.userInfo)
 const activeMenu = computed(() => route.path)
@@ -131,22 +96,32 @@ const pageTitle = computed(() => {
 })
 
 const stats = ref({
-  totalOpinions: 0,
-  approvedOpinions: 0,
-  pendingOpinions: 0,
-  rejectedOpinions: 0
+  overall: { total: 0, approved: 0, pending: 0, rejected: 0 },
+  today: { total: 0, approved: 0, pending: 0, rejected: 0 },
+  top_categories: []
 })
+
+const overallItems = computed(() => ([
+  { key:'total', label:'總意見數', value: stats.value.overall.total, icon: Document, color:'#409EFF' },
+  { key:'approved', label:'已核准', value: stats.value.overall.approved, icon: Check, color:'#67C23A' },
+  { key:'pending', label:'待審核', value: stats.value.overall.pending, icon: Clock, color:'#E6A23C' },
+  { key:'rejected', label:'已拒絕', value: stats.value.overall.rejected, icon: Close, color:'#F56C6C' }
+]))
+
+const todayItems = computed(() => ([
+  { key:'today_total', label:'今日意見數', value: stats.value.today.total, icon: Document, color:'#409EFF' },
+  { key:'today_approved', label:'今日核准', value: stats.value.today.approved, icon: Check, color:'#67C23A' },
+  { key:'today_pending', label:'今日待審核', value: stats.value.today.pending, icon: Clock, color:'#E6A23C' },
+  { key:'today_rejected', label:'今日拒絕', value: stats.value.today.rejected, icon: Close, color:'#F56C6C' }
+]))
 
 const refreshStats = async () => {
   try {
-    const data = await opinionAPI.getOpinions({ page: 1, page_size: 100 })
-    stats.value.totalOpinions = data.total || 0
-    stats.value.approvedOpinions = data.items?.filter(item => item.status === 'approved').length || 0
-    stats.value.pendingOpinions = data.items?.filter(item => item.status === 'pending').length || 0
-    stats.value.rejectedOpinions = data.items?.filter(item => item.status === 'rejected').length || 0
+    stats.value = await dashBoardStore.fetchStats()
     ElMessage.success('統計數據已更新')
-  } catch (error) {
-    console.error('Failed to fetch stats:', error)
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('載入統計失敗')
   }
 }
 
