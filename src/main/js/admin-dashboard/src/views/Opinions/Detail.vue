@@ -82,6 +82,11 @@
               </el-descriptions-item>
             </el-descriptions>
 
+            <!-- AI審查理由 -->
+            <div class="opinion-content">
+              <h3>AI審查建議</h3>
+              <p>{{ opinion.moderation_reason }}</p>
+            </div>
             <!-- 意見內容 -->
             <div class="opinion-content">
               <h3>意見內容</h3>

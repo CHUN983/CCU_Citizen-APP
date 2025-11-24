@@ -206,4 +206,7 @@ INSERT INTO categories (name, parent_id, description) VALUES
 -- Insert default admin user (password: admin123, please change in production)
 -- Password hash for 'admin123' using bcrypt
 INSERT INTO users (username, email, password_hash, full_name, role) VALUES
-('admin', 'admin@citizenapp.local', '$2b$12$sQ6ZiVBOMRTEZW2ANU6fEOSWoXWbdhei3ZCnRw6qRl87w9pvITO4q', '系統管理員', 'admin')
+('admin', 'admin@citizenapp.local', '$2b$12$sQ6ZiVBOMRTEZW2ANU6fEOSWoXWbdhei3ZCnRw6qRl87w9pvITO4q', '系統管理員', 'admin'),
+('ai_content_moderator', 'ai@citizenapp.local', '$2b$12$sQ6ZiVBOMRTEZW2ANU6fEOSWoXWbdhei3ZCnRw6qRl87w9pvITO4q', 'AI審核系統', 'admin');
+
+UPDATE users SET id = '0'  WHERE username = 'ai_content_moderator';
