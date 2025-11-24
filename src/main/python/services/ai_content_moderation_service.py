@@ -21,6 +21,7 @@ class ModerationConfig:
     MODERATION_LOGS_TABLE = "moderation_logs"
     CATEGORIES_TABLE = "categories"
     CATEGORY_KEYWORDS_TABLE = "category_keywords"
+    AUTO_CATEGORY_THRESHOLD = 70.0  # 自動分類信心度閾值
     openai_api_key = os.getenv("OPENAI_API_KEY", "")
 
 
@@ -339,11 +340,11 @@ class AIContentModerationService:
             - 單純抱怨、不屬於任何局處管轄範圍
 
             === 回應格式（只能回傳 JSON）===
-            {
+            {{
                 "category_id": <最適合的分類ID或 其他類別ID>,
-                "confidence": <0-100>,
+                "confidence": <信心度，0-100>,
                 "reason": "<簡短的分類理由，若不相關需說明為何給低分>"
-            }
+            }}
 
             請務必只回傳 JSON，不要額外文字。
             """
@@ -519,7 +520,7 @@ class AIContentModerationService:
             # 高信心度且安全 -> 自動通過
             decision = ModerationDecision.APPROVE
             needs_manual_review = False
-            reason = "自動審核通過"     
+            reason = f"自動審核通過: {ai_reason}"     
         elif overall_confidence < manual_review_threshold:
             # 低信心度 -> 自動拒絕
             decision = ModerationDecision.REJECT
@@ -597,6 +598,7 @@ class AIContentModerationService:
         auto_moderation_status: str,
         auto_moderation_score: float,
         auto_category_id: Optional[int],
+        category_confidence: Optional[float],
         moderation_reason: str,
         needs_manual_review: bool
     ) -> bool:
@@ -614,8 +616,13 @@ class AIContentModerationService:
             else:
                 final_status = "pending"
 
-            with get_db_cursor() as cursor:
-                cursor.execute("""
+            where_category_update_clause = ""
+            if category_confidence is not None and category_confidence >= ModerationConfig.AUTO_CATEGORY_THRESHOLD:
+                where_category_update_clause = "category_id =  %s"
+            else:
+                where_category_update_clause = "category_id = COALESCE(category_id, %s)"
+
+            query = f"""
                     UPDATE opinions
                     SET 
                         status = %s,
@@ -624,9 +631,12 @@ class AIContentModerationService:
                         auto_category_id = %s,
                         moderation_reason = %s,
                         needs_manual_review = %s,
-                        category_id = COALESCE(category_id, %s)
+                        {where_category_update_clause}
                     WHERE id = %s
-                """, (
+                """
+
+            with get_db_cursor() as cursor:
+                cursor.execute(query, (
                     final_status,
                     auto_moderation_status,
                     auto_moderation_score,

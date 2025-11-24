@@ -186,6 +186,13 @@
                 <el-icon><User /></el-icon>
                 <span>{{ comment.username || '匿名' }}</span>
               </div>
+              <div class="comment-delete"
+                v-if="isLoggedIn && (role === 'admin' || role === 'moderator')">
+                <el-icon
+                  @click="deleteComment(comment.id)"
+                  style="cursor: pointer; color: #f56c6c"
+                ><CircleClose /></el-icon>
+              </div>
               <div class="comment-date">
                 {{ formatDate(comment.created_at) }}
               </div>
@@ -214,6 +221,7 @@ const userStore = useUserStore()
 const opinionStore = useOpinionStore()
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
+const role = computed(() => userStore.role )
 const opinion = computed(() => opinionStore.currentOpinion)
 const loading = ref(false)
 
@@ -338,12 +346,24 @@ const handleSubmitComment = async () => {
   }
 }
 
+const deleteComment = async (commentId) => {
+  try {
+    await commentAPI.delete( commentId)
+    ElMessage.success('留言刪除成功')
+    // Refresh comments
+    await fetchComments()
+  } catch (error) {
+    ElMessage.error(error.detail || '刪除留言失敗')
+  }
+}
+
 onMounted(async () => {
   
   await fetchOpinion()
   await fetchComments()
 })
 
+//router update
 watch(opinionId, (newId, oldId) => {
   if (newId !== oldId) {
     fetchOpinion(newId)
@@ -458,6 +478,12 @@ watch(opinionId, (newId, oldId) => {
   gap: 8px;
   font-weight: bold;
   color: #303133;
+}
+
+.comment-delete {
+  align-items: center;
+  cursor: pointer;
+  color: #f56c6c;
 }
 
 .comment-date {

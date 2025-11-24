@@ -141,13 +141,19 @@ class ModerationService:
                 )
 
             # Notify owner (non-blocking, don't fail if notification fails)
+            if new_status == NotificationType.APPROVED :
+                noti_type = NotificationType.APPROVED
+            elif new_status == OpinionStatus.REJECTED:
+                noti_type = NotificationType.REJECTED
+            else :
+                noti_type = NotificationType.STATUS_CHANGE
                 
             try:
                 NotificationService.create_notification(
                     NotificationCreate(
                         user_id=opinion['user_id'],
                         opinion_id=opinion_id,
-                        type=NotificationType.STATUS_CHANGE,
+                        type=noti_type,
                         title=notification_title,
                         content=notification_content
                     )

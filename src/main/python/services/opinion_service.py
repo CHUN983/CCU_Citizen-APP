@@ -157,7 +157,8 @@ class OpinionService:
     @staticmethod
     def get_opinions(page: int = 1, page_size: int = 20,
                     status: Optional[OpinionStatus] = None,
-                    category_id: Optional[int] = None) -> OpinionList:
+                    category_id: Optional[int] = None,
+                    sort_by: Optional[str] = None) -> OpinionList:
         """Get paginated list of opinions"""
         offset = (page - 1) * page_size
 
@@ -175,6 +176,13 @@ class OpinionService:
 
         where_sql = " AND ".join(where_clauses)
 
+        SORT_MAP = {
+            "created_at": ("o.created_at", "DESC"),
+            "comment_count": ("o.comment_count", "ASC"),
+            "upvotes": ("upvotes", "DESC"),
+        }
+        sort_column, sort_order = SORT_MAP.get(sort_by, ("o.created_at", "DESC"))
+
         count_query = f"SELECT COUNT(*) as total FROM opinions o WHERE {where_sql}"
 
         data_query = f"""
@@ -186,7 +194,7 @@ class OpinionService:
             JOIN users u ON o.user_id = u.id
             LEFT JOIN categories c ON o.category_id = c.id
             WHERE {where_sql}
-            ORDER BY o.created_at DESC
+            ORDER BY {sort_column} {sort_order}
             LIMIT %s OFFSET %s
         """
 
@@ -253,6 +261,24 @@ class OpinionService:
                 (comment_id,)
             )
             return Comment(**cursor.fetchone())
+
+    @staticmethod
+    def get_comment_by_id(comment_id: int) -> Optional[Comment]:
+        """Get comment by ID"""
+        query = """
+            SELECT c.*, u.username
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.id = %s AND c.is_deleted = FALSE
+        """
+
+        with get_db_cursor() as cursor:
+            cursor.execute(query, (comment_id,))
+            row = cursor.fetchone()
+            if row:
+                return Comment(**row)
+            return None    
+
     @staticmethod
     def get_comments_by_opinion_id(opinion_id: int, limit: int = 50) -> List[Comment]:
         """Get list of comments for an opinion"""
@@ -269,6 +295,8 @@ class OpinionService:
             cursor.execute(query, (opinion_id, limit))
             rows = cursor.fetchall()
             return [Comment(**row) for row in rows]
+    
+    
     @staticmethod
     def vote_opinion(opinion_id: int, user_id: int, vote_data: VoteCreate) -> bool:
         """Vote on an opinion"""

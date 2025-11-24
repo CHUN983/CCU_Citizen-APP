@@ -1,5 +1,8 @@
 import { defineStore } from 'pinia'
 import { opinionAPI, categoryAPI } from '../api'
+import { useUserStore } from './user'
+
+const userStore = useUserStore()
 
 export const useOpinionStore = defineStore('opinion', {
   state: () => ({
@@ -33,9 +36,13 @@ export const useOpinionStore = defineStore('opinion', {
     async fetchOpinionById(id) {
       this.loading = true
       try {
-          const [ opinionData, collectStatus] = await Promise.all([
+          const bookmarkPromise = userStore.isLoggedIn
+            ? opinionAPI.getBookmarkStatus(id)
+            : Promise.resolve({ is_collected: false })
+
+          const [ opinionData, collectStatus ] = await Promise.all([
             opinionAPI.getById(id),
-            opinionAPI.getBookmarkStatus(id)
+            bookmarkPromise
           ])
 
           // 把 like/support 數量合併進 currentOpinion

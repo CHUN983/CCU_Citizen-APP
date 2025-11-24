@@ -4,6 +4,7 @@ Opinion API routes
 
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from typing import Optional, List
+
 from ..models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus, OpinionWithUser
 from ..models.comment import Comment, CommentCreate
 from ..models.vote import VoteCreate
@@ -63,10 +64,11 @@ async def get_opinions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     status: Optional[OpinionStatus] = None,
-    category_id: Optional[int] = None
+    category_id: Optional[int] = None,
+    sort_by: Optional[str] = None
 ):
     """Get paginated list of opinions"""
-    return OpinionService.get_opinions(page, page_size, status, category_id)
+    return OpinionService.get_opinions(page, page_size, status, category_id, sort_by)
 
 #固定路徑要放在參數路徑前面，否則會被當成參數處理
 @router.get("/collect", response_model=OpinionList)
@@ -127,6 +129,7 @@ async def get_comments(
     comments = OpinionService.get_comments_by_opinion_id(opinion_id, limit)
 
     return comments
+
 
 @router.post("/{opinion_id}/vote", status_code=200)
 async def vote_opinion(
