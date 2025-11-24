@@ -264,6 +264,9 @@ const handleVote = async (voteType) => {
   try {
     await opinionStore.voteOpinion(opinionId.value, voteType)
     ElMessage.success('投票成功')
+
+    // Refresh opinion data
+    await fetchOpinion()
   } catch (error) {
     ElMessage.error(error.detail || '投票失敗')
   }
