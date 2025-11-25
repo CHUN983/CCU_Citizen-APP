@@ -50,7 +50,62 @@ jobs:
         continue-on-error: true
 
   # ==========================================
-  # Job 2: 後端單元測試
+  # Job 2: 前端測試
+  # ==========================================
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: src/main/js/admin-dashboard/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: |
+          cd src/main/js/admin-dashboard
+          npm ci
+
+      - name: 🔍 Lint code
+        run: |
+          cd src/main/js/admin-dashboard
+          npm run lint
+        continue-on-error: true
+
+      - name: 🏗️ Build project
+        run: |
+          cd src/main/js/admin-dashboard
+          npm run build
+
+      - name: 🧪 Run unit tests
+        run: |
+          cd src/main/js/admin-dashboard
+          npm run test
+        continue-on-error: true
+
+      - name: 📊 Generate coverage report
+        run: |
+          cd src/main/js/admin-dashboard
+          npm run test:coverage
+        continue-on-error: true
+
+      - name: 📤 Upload coverage to artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: src/main/js/admin-dashboard/coverage/
+          retention-days: 7
+
+  # ==========================================
+  # Job 3: 後端單元測試
   # ==========================================
   backend-tests:
     name: Backend Unit Tests
@@ -128,12 +183,12 @@ jobs:
         continue-on-error: true
 
   # ==========================================
-  # Job 3: API 健康檢查
+  # Job 4: API 健康檢查
   # ==========================================
   api-health-check:
     name: API Health Check
     runs-on: ubuntu-latest
-    needs: backend-tests
+    needs: [backend-tests, frontend-tests]
 
     services:
       mysql:
@@ -196,7 +251,7 @@ jobs:
           echo "$response" | grep -q "/admin" && echo "✅ Admin endpoints found"
 
   # ==========================================
-  # Job 4: 安全性掃描
+  # Job 5: 安全性掃描
   # ==========================================
   security-scan:
     name: Security Scan
@@ -225,7 +280,7 @@ jobs:
         continue-on-error: true
 
   # ==========================================
-  # Job 5: 構建 Docker Image（可選）
+  # Job 6: 構建 Docker Image（可選）
   # ==========================================
   build-docker:
     name: Build Docker Image
@@ -248,7 +303,7 @@ jobs:
         # docker build -t citizenapp:${{ github.sha }} .
 
   # ==========================================
-  # Job 6: 部署到測試環境（可選）
+  # Job 7: 部署到測試環境（可選）
   # ==========================================
   deploy-staging:
     name: Deploy to Staging
@@ -270,23 +325,25 @@ jobs:
           echo "Author: ${{ github.actor }}"
 
   # ==========================================
-  # Job 7: 通知
+  # Job 8: 通知
   # ==========================================
   notify:
     name: Notification
     runs-on: ubuntu-latest
-    needs: [backend-tests, api-health-check, security-scan]
+    needs: [frontend-tests, backend-tests, api-health-check, security-scan]
     if: always()
 
     steps:
       - name: 📧 Send notification
         run: |
-          if [ "${{ needs.backend-tests.result }}" == "success" ] && \
+          if [ "${{ needs.frontend-tests.result }}" == "success" ] && \
+             [ "${{ needs.backend-tests.result }}" == "success" ] && \
              [ "${{ needs.api-health-check.result }}" == "success" ]; then
             echo "✅ CI/CD Pipeline completed successfully!"
             echo "All tests passed and API is healthy"
           else
             echo "❌ CI/CD Pipeline failed"
+            echo "Frontend tests: ${{ needs.frontend-tests.result }}"
             echo "Backend tests: ${{ needs.backend-tests.result }}"
             echo "API health: ${{ needs.api-health-check.result }}"
             echo "Security: ${{ needs.security-scan.result }}"
