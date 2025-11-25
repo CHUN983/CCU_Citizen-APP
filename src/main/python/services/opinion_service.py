@@ -8,10 +8,10 @@ from ..models.opinion import (
     OpinionList, OpinionStatus
 )
 from ..models.comment import Comment, CommentCreate
-from ..models.vote import Vote, VoteCreate
+from ..models.vote import Vote, VoteCreate, VoteType
 from ..models.notification import NotificationCreate, NotificationType
-from ..utils.database import get_db_cursor
-from .notification_service import NotificationService
+from ..utils.database import get_db_cursor, get_db_connection
+from ..services.notification_service import NotificationService
 
 
 class OpinionService:
@@ -25,30 +25,61 @@ class OpinionService:
                                  region, latitude, longitude, is_public)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
+        try:
+            current_step = "insert_opinion"
+            with get_db_cursor() as cursor:
+                cursor.execute(
+                    query,
+                    (user_id, opinion_data.title, opinion_data.content,
+                     opinion_data.category_id, opinion_data.status,
+                    opinion_data.region, opinion_data.latitude,
+                    opinion_data.longitude, opinion_data.is_public)
+                )
 
-        with get_db_cursor() as cursor:
-            cursor.execute(
-                query,
-                (user_id, opinion_data.title, opinion_data.content,
-                 opinion_data.category_id, opinion_data.status.value,
-                 opinion_data.region, opinion_data.latitude,
-                 opinion_data.longitude, opinion_data.is_public)
-            )
+                opinion_id = cursor.lastrowid
 
-            opinion_id = cursor.lastrowid
+                # Add tags if provided
+                if opinion_data.tags:
+                    current_step = "insert_tags"
+                    OpinionService._add_tags(cursor, opinion_id, opinion_data.tags)
 
-            # Add tags if provided
-            if opinion_data.tags:
-                OpinionService._add_tags(cursor, opinion_id, opinion_data.tags)
+                # Add media if provided
+                if opinion_data.media:
+                    current_step = "insert_media"
+                    media_query = """
+                        INSERT INTO opinion_media (opinion_id, media_type, file_path, file_size, mime_type)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """
+                    media_values = []
+                    for m in opinion_data.media:
+                        media_values.append(
+                            (
+                                opinion_id,
+                                m.media_type.value,  # Enum -> 'image' / 'video' / 'audio'
+                                m.file_path,
+                                m.file_size,
+                                m.mime_type,
+                            )
+                        )
+                    cursor.executemany(media_query, media_values)
 
-            # Log history
-            cursor.execute(
-                """INSERT INTO opinion_history (opinion_id, user_id, action, new_status)
-                   VALUES (%s, %s, 'created', %s)""",
-                (opinion_id, user_id, opinion_data.status.value)
-            )
+                # Log history
+                current_step = "insert_history"
+                cursor.execute(
+                    """INSERT INTO opinion_history (opinion_id, user_id, action, new_status)
+                    VALUES (%s, %s, 'created', %s)""",
+                    (opinion_id, user_id, opinion_data.status)
+                )
 
-            return OpinionService.get_opinion_by_id(opinion_id)
+            current_step = "get_opinion_by_id"
+            opinion = OpinionService.get_opinion_by_id(opinion_id)
+
+            return opinion
+        
+        except Exception as e:
+            # 這裡你可以先 print / log，再丟出給 FastAPI
+            print(f"[ERROR] create_opinion failed at step '{current_step}': {e}")
+            return None
 
     @staticmethod
     def get_opinion_by_id(opinion_id: int, increment_view: bool = False) -> Optional[OpinionWithUser]:
@@ -61,15 +92,19 @@ class OpinionService:
                 )
 
         query = """
-            SELECT o.*, u.username, u.full_name as user_full_name,
-                   (SELECT COUNT(*) FROM votes WHERE opinion_id = o.id) as vote_count,
+            SELECT o.*, c.name as category_name, u.username, u.full_name as user_full_name,
+                   (SELECT COUNT(*) FROM votes v WHERE v.opinion_id = o.id AND v.vote_type='like') as upvotes,
+                   (SELECT COUNT(*) FROM votes v WHERE v.opinion_id = o.id AND v.vote_type='support') as downvotes,
                    (SELECT COUNT(*) FROM comments WHERE opinion_id = o.id AND is_deleted = FALSE) as comment_count
             FROM opinions o
             JOIN users u ON o.user_id = u.id
+            LEFT JOIN categories c ON o.category_id = c.id
             WHERE o.id = %s
         """
 
         with get_db_cursor() as cursor:
+
+            
             cursor.execute(query, (opinion_id,))
             opinion_row = cursor.fetchone()
 
@@ -86,12 +121,44 @@ class OpinionService:
             tags = [row['name'] for row in cursor.fetchall()]
             opinion_row['tags'] = tags
 
+            cursor.execute(
+                """
+                SELECT 
+                    id,
+                    opinion_id,
+                    media_type,
+                    file_path,
+                    file_size,
+                    mime_type,
+                    created_at
+                FROM opinion_media
+                WHERE opinion_id = %s
+                ORDER BY created_at ASC
+                """,
+                (opinion_id,)
+            )
+            media_rows = cursor.fetchall()  # list[dict]
+
+            # Process media filename/url/thumbnail_url
+            for m in media_rows:
+                filename = m["file_path"].split("/")[-1]
+                m["filename"] = filename
+                m["url"] = f"uploads/{m['media_type']}/{filename}"
+                if m["media_type"] == "image":
+                    m["thumbnail_url"] = f"uploads/thumbnails/{filename}"
+                else:
+                    m["thumbnail_url"] = None
+
+            # 這裡可以直接給 Pydantic 處理 nested model
+            opinion_row['media'] = media_rows
+
             return OpinionWithUser(**opinion_row)
 
     @staticmethod
     def get_opinions(page: int = 1, page_size: int = 20,
                     status: Optional[OpinionStatus] = None,
-                    category_id: Optional[int] = None) -> OpinionList:
+                    category_id: Optional[int] = None,
+                    sort_by: Optional[str] = None) -> OpinionList:
         """Get paginated list of opinions"""
         offset = (page - 1) * page_size
 
@@ -109,16 +176,25 @@ class OpinionService:
 
         where_sql = " AND ".join(where_clauses)
 
+        SORT_MAP = {
+            "created_at": ("o.created_at", "DESC"),
+            "comment_count": ("o.comment_count", "ASC"),
+            "upvotes": ("upvotes", "DESC"),
+        }
+        sort_column, sort_order = SORT_MAP.get(sort_by, ("o.created_at", "DESC"))
+
         count_query = f"SELECT COUNT(*) as total FROM opinions o WHERE {where_sql}"
 
         data_query = f"""
-            SELECT o.*, u.username, u.full_name as user_full_name,
-                   (SELECT COUNT(*) FROM votes WHERE opinion_id = o.id) as vote_count,
+            SELECT o.*, c.name as category_name, u.username, u.full_name as user_full_name,
+                   (SELECT COUNT(*) FROM votes v WHERE v.opinion_id = o.id AND v.vote_type='like') as upvotes,
+                   (SELECT COUNT(*) FROM votes v WHERE v.opinion_id = o.id AND v.vote_type='support') as downvotes,
                    (SELECT COUNT(*) FROM comments WHERE opinion_id = o.id AND is_deleted = FALSE) as comment_count
             FROM opinions o
             JOIN users u ON o.user_id = u.id
+            LEFT JOIN categories c ON o.category_id = c.id
             WHERE {where_sql}
-            ORDER BY o.created_at DESC
+            ORDER BY {sort_column} {sort_order}
             LIMIT %s OFFSET %s
         """
 
@@ -187,6 +263,41 @@ class OpinionService:
             return Comment(**cursor.fetchone())
 
     @staticmethod
+    def get_comment_by_id(comment_id: int) -> Optional[Comment]:
+        """Get comment by ID"""
+        query = """
+            SELECT c.*, u.username
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.id = %s AND c.is_deleted = FALSE
+        """
+
+        with get_db_cursor() as cursor:
+            cursor.execute(query, (comment_id,))
+            row = cursor.fetchone()
+            if row:
+                return Comment(**row)
+            return None    
+
+    @staticmethod
+    def get_comments_by_opinion_id(opinion_id: int, limit: int = 50) -> List[Comment]:
+        """Get list of comments for an opinion"""
+        query = """
+            SELECT c.*, u.username
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.opinion_id = %s AND c.is_deleted = FALSE
+            ORDER BY c.created_at ASC
+            LIMIT %s
+        """
+
+        with get_db_cursor() as cursor:
+            cursor.execute(query, (opinion_id, limit))
+            rows = cursor.fetchall()
+            return [Comment(**row) for row in rows]
+    
+    
+    @staticmethod
     def vote_opinion(opinion_id: int, user_id: int, vote_data: VoteCreate) -> bool:
         """Vote on an opinion"""
         query = """
@@ -203,6 +314,7 @@ class OpinionService:
             print(f"Error voting: {e}")
             return False
 
+    
     @staticmethod
     def collect_opinion(opinion_id: int, user_id: int) -> bool:
         """Add opinion to user's collection"""
@@ -226,6 +338,112 @@ class OpinionService:
         with get_db_cursor() as cursor:
             cursor.execute(query, (opinion_id, user_id))
             return cursor.rowcount > 0
+
+    @staticmethod
+    def is_collected(opinion_id: int, user_id: int) -> bool:
+        """Check if user has collected the opinion"""
+        query = """
+            SELECT 1 FROM collections
+            WHERE opinion_id = %s AND user_id = %s
+            LIMIT 1
+        """
+        with get_db_cursor() as cursor:
+            cursor.execute(query, (opinion_id, user_id))
+            row = cursor.fetchone()
+            return row is not None
+    
+    @staticmethod
+    def get_bookmarked_opinions(
+        user_id: int,
+        page: int = 1,
+        page_size: int = 5
+    ) -> OpinionList:
+        """Get paginated list of opinions bookmarked by user"""
+        offset = (page - 1) * page_size
+
+        # 1) 先算總數
+        count_query = """
+            SELECT COUNT(*) AS total
+            FROM collections c
+            JOIN opinions o ON c.opinion_id = o.id
+            WHERE c.user_id = %s AND o.is_public = TRUE
+        """
+
+        # 2) 再拿實際資料
+        data_query = """
+            SELECT 
+                o.*, 
+                u.username,
+                u.full_name AS user_full_name,
+                -- like 數量
+                (
+                    SELECT COUNT(*) 
+                    FROM votes v 
+                    WHERE v.opinion_id = o.id 
+                      AND v.vote_type = %s
+                ) AS upvotes,
+                -- support 數量
+                (
+                    SELECT COUNT(*) 
+                    FROM votes v 
+                    WHERE v.opinion_id = o.id 
+                      AND v.vote_type = %s
+                ) AS downvotes,
+                -- 留言數
+                (
+                    SELECT COUNT(*) 
+                    FROM comments cmt
+                    WHERE cmt.opinion_id = o.id
+                      AND cmt.is_deleted = FALSE
+                ) AS comment_count
+            FROM collections c
+            JOIN opinions o ON c.opinion_id = o.id
+            JOIN users u ON o.user_id = u.id
+            WHERE c.user_id = %s AND o.is_public = TRUE
+            ORDER BY c.created_at DESC
+            LIMIT %s OFFSET %s
+        """
+
+        with get_db_cursor() as cursor:
+            # total
+            cursor.execute(count_query, (user_id,))
+            total = cursor.fetchone()['total']
+
+            # data
+            cursor.execute(
+                data_query,
+                (
+                    VoteType.LIKE.value,      # 'like'
+                    VoteType.DISLIKE.value,    # 'support'
+                    user_id,
+                    page_size,
+                    offset,
+                )
+            )
+            rows = cursor.fetchall()
+
+            # 補 tags
+            for row in rows:
+                cursor.execute(
+                    """
+                    SELECT t.name 
+                    FROM tags t
+                    JOIN opinion_tags ot ON t.id = ot.tag_id
+                    WHERE ot.opinion_id = %s
+                    """,
+                    (row['id'],)
+                )
+                row['tags'] = [r['name'] for r in cursor.fetchall()]
+
+            items = [OpinionWithUser(**row) for row in rows]
+
+            return OpinionList(
+                total=total,
+                page=page,
+                page_size=page_size,
+                items=items
+            )
+
 
     @staticmethod
     def _add_tags(cursor, opinion_id: int, tag_names: List[str]):

@@ -1,4 +1,4 @@
--- Citizen Urban Planning Participation System - Database Schema
+﻿-- Citizen Urban Planning Participation System - Database Schema
 -- MVP Version 1.0
 
 -- Users table (市民、行政人員、管理員)
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     opinion_id INT NULL,
-    type ENUM('comment', 'status_change', 'merged', 'approved', 'rejected') NOT NULL,
+    type ENUM('comment', 'like', 'status_change', 'merged', 'approved', 'rejected') NOT NULL,
     title VARCHAR(200) NOT NULL,
     content TEXT,
     is_read BOOLEAN DEFAULT FALSE,
@@ -144,6 +144,21 @@ CREATE TABLE IF NOT EXISTS notifications (
     INDEX idx_user (user_id),
     INDEX idx_read (is_read),
     INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Notification milestones tracking table (通知級距追蹤表)
+-- 用於追蹤按讚和留言的級距通知（1, 2, 4, 8, 16...）
+CREATE TABLE IF NOT EXISTS notification_milestones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    opinion_id INT NOT NULL,
+    milestone_type ENUM('like', 'comment') NOT NULL,
+    last_notified_count INT DEFAULT 0 COMMENT '上次通知時的數量',
+    next_milestone INT DEFAULT 1 COMMENT '下次通知的目標數量',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (opinion_id) REFERENCES opinions(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_milestone (opinion_id, milestone_type),
+    INDEX idx_opinion (opinion_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Opinion history/audit log (歷史紀錄)
@@ -177,13 +192,21 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 
 -- Insert default categories (初始分類)
 INSERT INTO categories (name, parent_id, description) VALUES
-('交通運輸', NULL, '道路、大眾運輸、停車等相關議題'),
-('環境保護', NULL, '環境清潔、綠化、污染等議題'),
-('公共設施', NULL, '公園、圖書館、運動場等設施'),
-('社會福利', NULL, '社會服務、福利政策等議題'),
-('其他', NULL, '其他城市規劃相關議題');
+('交通局', NULL, '道路、大眾運輸、停車等相關議題'),
+('環保局', NULL, '環境清潔、綠化、污染等議題'),
+('工務局', NULL, '公園、施工、路燈、運動場等設施'),
+('社會局', NULL, '社會服務、福利政策等議題'),
+('衛生局', NULL, '醫療、食品安全、衛生檢舉'),
+('警察局', NULL, '治安、噪音糾紛、違停檢舉'),
+('教育局', NULL, '體育場所、圖書館、教育事務、學區劃分'),
+('都發局', NULL, '都市規劃、土地、開發案'),
+('民政局', NULL, '社區事務、公墓、鄰里投訴'),
+('其他', NULL, '制度、行政流程、抱怨政府效率、其他城市規劃相關議題');
 
 -- Insert default admin user (password: admin123, please change in production)
 -- Password hash for 'admin123' using bcrypt
 INSERT INTO users (username, email, password_hash, full_name, role) VALUES
-('admin', 'admin@citizenapp.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5VO0VsVZ.hxj6', 'System Administrator', 'admin');
+('admin', 'admin@citizenapp.local', '$2b$12$sQ6ZiVBOMRTEZW2ANU6fEOSWoXWbdhei3ZCnRw6qRl87w9pvITO4q', '系統管理員', 'admin'),
+('ai_content_moderator', 'ai@citizenapp.local', '$2b$12$sQ6ZiVBOMRTEZW2ANU6fEOSWoXWbdhei3ZCnRw6qRl87w9pvITO4q', 'AI審核系統', 'admin');
+
+UPDATE users SET id = '0'  WHERE username = 'ai_content_moderator';

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清理緩存 - Citizen Portal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #409eff;
+            margin-bottom: 20px;
+        }
+        .info {
+            background: #ecf5ff;
+            border-left: 4px solid #409eff;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .success {
+            background: #f0f9ff;
+            border-left: 4px solid #67c23a;
+            padding: 15px;
+            margin: 20px 0;
+            color: #67c23a;
+        }
+        button {
+            background: #f56c6c;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #f78989;
+        }
+        .btn-primary {
+            background: #409eff;
+        }
+        .btn-primary:hover {
+            background: #66b1ff;
+        }
+        .storage-info {
+            background: #f4f4f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 清理瀏覽器緩存</h1>
+
+        <div class="info">
+            <h3>為什麼需要清理？</h3>
+            <p>瀏覽器中存儲了無效的用戶數據（字符串 "undefined"），導致 JSON 解析錯誤。</p>
+            <p><strong>錯誤訊息：</strong></p>
+            <pre>Uncaught SyntaxError: "undefined" is not valid JSON</pre>
+        </div>
+
+        <div class="storage-info">
+            <h3>📦 當前 LocalStorage 內容：</h3>
+            <pre id="storage-content">載入中...</pre>
+        </div>
+
+        <button onclick="clearStorage()">🗑️ 清理 LocalStorage</button>
+        <button class="btn-primary" onclick="location.href='/'">🏠 返回首頁</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // 顯示當前 localStorage 內容
+        function displayStorage() {
+            const storage = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                storage[key] = localStorage.getItem(key);
+            }
+            document.getElementById('storage-content').textContent =
+                JSON.stringify(storage, null, 2) || '{ (空) }';
+        }
+
+        // 清理 localStorage
+        function clearStorage() {
+            if (confirm('確定要清除所有本地存儲的數據嗎？\n（包括登入狀態、用戶信息等）')) {
+                try {
+                    localStorage.clear();
+                    document.getElementById('result').innerHTML = `
+                        <div class="success">
+                            <h3>✅ 清理成功！</h3>
+                            <p>所有 LocalStorage 數據已清除</p>
+                            <p>頁面將在 2 秒後自動刷新...</p>
+                        </div>
+                    `;
+                    displayStorage();
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } catch (error) {
+                    document.getElementById('result').innerHTML = `
+                        <div class="info" style="border-color: #f56c6c; background: #fef0f0;">
+                            <h3>❌ 清理失敗</h3>
+                            <p>錯誤：${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // 頁面載入時顯示當前存儲內容
+        window.addEventListener('load', displayStorage);
+    </script>
+</body>
+</html>

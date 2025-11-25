@@ -17,29 +17,213 @@ All Phase 1 core requirements implemented:
 
 ## 🚀 Quick Start
 
-### Option 1: Using Helper Scripts (Recommended)
+### 環境需求
+
+- Python 3.9+
+- MySQL 8.0+
+- Node.js 16+ (for frontend)
+- npm or yarn
+
+---
+
+### 📋 完整啟動流程
+
+#### 步驟 1: 啟動 MySQL 資料庫
 
 ```bash
-# 1. Setup environment
-cp .env.example .env
-# Edit .env with your MySQL credentials
+# 檢查 MySQL 狀態
+sudo service mysql status
 
-# 2. Initialize database
-./scripts/init_database.sh
+# 如果未運行，啟動 MySQL
+sudo service mysql start
+```
 
-# 3. Start server
+#### 步驟 2: 啟動後端 FastAPI 服務
+
+**方法 A: 使用啟動腳本（推薦）**
+
+```bash
+# 直接執行啟動腳本
 ./scripts/start_server.sh
 ```
 
-### Option 2: Manual Setup
+腳本會自動：
+- 啟動 Python 虛擬環境
+- 檢查並安裝依賴
+- 啟動 FastAPI 服務（支援熱重載）
 
-See detailed instructions in [docs/user/SETUP_GUIDE.md](docs/user/SETUP_GUIDE.md)
+**方法 B: 手動啟動**
 
-### Access the API
+```bash
+# 1. 啟動虛擬環境
+source venv/bin/activate
 
-- **API Base**: http://localhost:8000
-- **Interactive Docs**: http://localhost:8000/api/docs
-- **Default Admin**: username: `admin`, password: `admin123`
+# 2. 安裝依賴（首次運行）
+pip install -r requirements.txt
+
+# 3. 啟動 FastAPI 服務
+$env:PYTHONPATH="src/main/python"
+python -m uvicorn src.main.python.core.app:app --reload --host 0.0.0.0 --port 8000
+```
+
+**後端服務地址：**
+- API 主服務: http://localhost:8000
+- Swagger 文檔: http://localhost:8000/api/docs
+- ReDoc 文檔: http://localhost:8000/api/redoc
+- 健康檢查: http://localhost:8000/health
+
+---
+
+#### 步驟 3: 啟動前端服務
+
+本專案包含兩個前端應用：
+
+##### 3.1 啟動市民端（Citizen Portal）
+
+```bash
+# 進入市民端目錄
+cd src/main/js/citizen-portal
+
+# 安裝依賴（首次運行）
+npm install
+
+# 啟動開發服務器
+npm run dev
+```
+
+**市民端地址：** http://localhost:5174/
+
+**功能：**
+- 市民註冊/登入
+- 提交意見
+- 瀏覽已核准的意見
+- 評論和投票
+- 收藏意見
+
+##### 3.2 啟動管理端（Admin Dashboard）
+
+```bash
+# 進入管理端目錄
+cd src/main/js/admin-dashboard
+
+# 安裝依賴（首次運行）
+npm install
+
+# 啟動開發服務器
+npm run dev
+```
+
+**管理端地址：** http://localhost:5173/
+
+**登入資訊：**
+- 帳號：`admin`
+- 密碼：`admin123`
+
+**功能：**
+- 審核待審意見
+- 核准/拒絕意見
+- 合併重複意見
+- 刪除不當評論
+- 管理分類
+
+---
+
+### 🔧 常見問題排除
+
+#### 問題 1: 前端頁面空白
+
+**原因：** 瀏覽器 localStorage 存儲了無效數據
+
+**解決方法：**
+1. 訪問清理頁面：http://localhost:5174/clear-storage.html
+2. 點擊「清理 LocalStorage」按鈕
+3. 或在瀏覽器 Console 執行：`localStorage.clear()` 然後重新整理
+
+#### 問題 2: 後端無法連接
+
+```bash
+# 確認後端運行狀態
+curl http://localhost:8000/health
+
+# 應返回：{"status":"healthy"}
+```
+
+#### 問題 3: 資料庫連接失敗
+
+```bash
+# 檢查 MySQL 狀態
+sudo service mysql status
+
+# 測試資料庫連接
+mysql -u root -p citizen_app -e "SELECT COUNT(*) FROM opinions;"
+```
+
+#### 問題 4: 前端端口被佔用
+
+如果看到 "Port 5174 is in use"，Vite 會自動嘗試其他端口（5175, 5176...）
+查看終端輸出確認實際端口。
+
+---
+
+### 📊 服務狀態檢查
+
+所有服務啟動後：
+
+```bash
+# 檢查所有進程
+ps aux | grep -E "(mysql|uvicorn|vite)"
+
+# 測試後端
+curl http://localhost:8000/health
+
+# 測試前端
+curl -I http://localhost:5174/
+curl -I http://localhost:5173/
+```
+
+---
+
+### 🎯 完整訪問指南
+
+| 服務 | URL | 說明 |
+|------|-----|------|
+| **後端 API** | http://localhost:8000 | FastAPI 主服務 |
+| **API 文檔** | http://localhost:8000/api/docs | Swagger 互動式文檔 |
+| **市民端** | http://localhost:5174 | 市民意見平台 |
+| **管理端** | http://localhost:5173 | 管理員後台 |
+| **測試頁面** | http://localhost:5174/test | 診斷頁面 |
+| **清理工具** | http://localhost:5174/clear-storage.html | LocalStorage 清理 |
+
+---
+
+### 🛑 停止服務
+
+```bash
+# 停止後端
+pkill -f "uvicorn src.main.python.core.app:app"
+
+# 停止前端
+pkill -f "vite"
+
+# 停止 MySQL（可選）
+sudo service mysql stop
+```
+
+---
+
+### 🔄 初始化資料庫
+
+首次運行或重置資料庫：
+
+```bash
+# 使用初始化腳本
+./scripts/init_database.sh
+```
+
+此腳本會：
+- 創建資料庫
+- 載入 schema
+- 建立初始管理員帳號
 
 ## Project Structure
 

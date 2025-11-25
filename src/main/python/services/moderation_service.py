@@ -2,11 +2,13 @@
 Moderation service for admin operations
 """
 
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 from ..models.opinion import OpinionStatus
 from ..models.notification import NotificationCreate, NotificationType
+from ..models.opinion_history import OpinionHistoryList, OpinionHistoryItem
 from ..utils.database import get_db_cursor
-from .notification_service import NotificationService
+from ..services.notification_service import NotificationService
 
 
 class ModerationService:
@@ -49,20 +51,24 @@ class ModerationService:
                     (source_id, moderator_id, target_id)
                 )
 
-                # Notify opinion owner
+                # Notify opinion owner (non-blocking)
                 cursor.execute("SELECT user_id FROM opinions WHERE id = %s", (source_id,))
                 owner = cursor.fetchone()
 
                 if owner:
-                    NotificationService.create_notification(
-                        NotificationCreate(
-                            user_id=owner['user_id'],
-                            opinion_id=source_id,
-                            type=NotificationType.MERGED,
-                            title="Opinion merged",
-                            content=f"Your opinion has been merged with opinion #{target_id}"
+                    try:
+                        NotificationService.create_notification(
+                            NotificationCreate(
+                                user_id=owner['user_id'],
+                                opinion_id=source_id,
+                                type=NotificationType.MERGED,
+                                title="Opinion merged",
+                                content=f"Your opinion has been merged with opinion #{target_id}"
+                            )
                         )
-                    )
+                    except Exception as notif_error:
+                        print(f"Error creating notification: {notif_error}")
+                        # Continue anyway
 
                 return True
         except Exception as e:
@@ -134,18 +140,134 @@ class ModerationService:
                     (opinion_id, moderator_id, old_status, new_status.value)
                 )
 
-                # Notify owner
+            # Notify owner (non-blocking, don't fail if notification fails)
+            if new_status == NotificationType.APPROVED :
+                noti_type = NotificationType.APPROVED
+            elif new_status == OpinionStatus.REJECTED:
+                noti_type = NotificationType.REJECTED
+            else :
+                noti_type = NotificationType.STATUS_CHANGE
+                
+            try:
                 NotificationService.create_notification(
                     NotificationCreate(
                         user_id=opinion['user_id'],
                         opinion_id=opinion_id,
-                        type=NotificationType.STATUS_CHANGE,
+                        type=noti_type,
                         title=notification_title,
                         content=notification_content
                     )
                 )
-
-                return True
+            except Exception as notif_error:
+                print(f"Error creating notification: {notif_error}")
+                # Continue anyway - notification failure should not fail the moderation
+            return True
         except Exception as e:
             print(f"Error changing status: {e}")
             return False
+
+
+    @staticmethod
+    def get_dashboard_stats() -> dict:
+        with get_db_cursor() as cursor:
+            # overall
+            cursor.execute("""
+                SELECT 
+                COUNT(*) total,
+                SUM(status='approved') approved,
+                SUM(status='pending') pending,
+                SUM(status='rejected') rejected
+                FROM opinions
+            """)
+            overall = cursor.fetchone()
+
+            # today
+            cursor.execute("""
+                SELECT 
+                COUNT(*) total,
+                SUM(status='approved') approved,
+                SUM(status='pending') pending,
+                SUM(status='rejected') rejected
+                FROM opinions
+                WHERE DATE(created_at) = CURDATE()
+            """)
+            today = cursor.fetchone()
+
+            # top categories
+            cursor.execute("""
+                SELECT 
+                o.category_id,
+                c.name AS category_name,
+                COUNT(*) AS count
+                FROM opinions o
+                LEFT JOIN categories c ON o.category_id = c.id
+                GROUP BY o.category_id, c.name
+                ORDER BY count DESC
+                LIMIT 5
+            """)
+            top_categories = cursor.fetchall()
+
+            return {
+                "overall": overall,
+                "today": today,
+                "top_categories": top_categories
+            }
+        
+    @staticmethod
+    def get_moderation_history(
+        page: int,
+        page_size: int,
+        opinion_id: Optional[int] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> OpinionHistoryList:
+        offset = (page - 1) * page_size
+        
+        where = ["1=1"]
+        params = []
+
+        if opinion_id:
+            where.append("h.opinion_id = %s")
+            params.append(opinion_id)
+
+        if start_time:
+            where.append("h.created_at >= %s")
+            params.append(start_time)
+
+        if end_time:
+            where.append("h.created_at <= %s")
+            params.append(end_time)
+
+        where_sql = " AND ".join(where)
+
+        count_sql = f"""
+            SELECT COUNT(*) AS total
+            FROM opinion_history h
+            WHERE {where_sql}
+        """
+
+        data_sql = f"""
+            SELECT h.*, u.username, o.title AS opinion_title
+            FROM opinion_history h
+            LEFT JOIN users u ON h.user_id = u.id
+            LEFT JOIN opinions o ON h.opinion_id = o.id
+            WHERE {where_sql}
+            ORDER BY h.created_at DESC
+            LIMIT %s OFFSET %s
+        """
+
+        with get_db_cursor() as cursor:
+            cursor.execute(count_sql, params)
+            total = cursor.fetchone()["total"]
+
+            cursor.execute(data_sql, params + [page_size, offset])
+            rows = cursor.fetchall()
+
+        items = [OpinionHistoryItem(**r) for r in rows]
+
+        return OpinionHistoryList(
+            total=total,
+            page=page,
+            page_size=page_size,
+            items=items
+        )

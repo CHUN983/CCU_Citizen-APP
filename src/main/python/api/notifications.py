@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from ..models.notification import Notification
 from ..services.notification_service import NotificationService
-from .auth import get_current_user
+from ..api.auth import get_current_user
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
