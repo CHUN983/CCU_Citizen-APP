@@ -15,7 +15,6 @@ export const opinionAPI = {
   update: (id, data) => axios.put(`/opinions/${id}`, data),
   delete: (id) => axios.delete(`/opinions/${id}`),
   vote: (id, voteType) => axios.post(`/opinions/${id}/vote`, { vote_type: voteType }),
-  getVotes: (id) => axios.get(`/opinions/${id}/votes`),
   bookmark: (id) => axios.post(`/opinions/${id}/collect`),
   getBookmarkStatus: (id) => axios.get(`/opinions/${id}/collect`),
   getBookmarked: (params) => axios.get('/opinions/collect', { params }),
@@ -27,7 +26,7 @@ export const commentAPI = {
   getList: (opinionId, params) => axios.get(`/opinions/${opinionId}/comments`, { params }),
   create: (opinionId, data) => axios.post(`/opinions/${opinionId}/comments`, data),
   update: (opinionId, commentId, data) => axios.put(`/opinions/${opinionId}/comments/${commentId}`, data),
-  delete: (opinionId, commentId) => axios.delete(`/opinions/${opinionId}/comments/${commentId}`)
+  delete: (commentId) => axios.delete(`/admin/comments/${commentId}`)
 }
 
 // Category APIs

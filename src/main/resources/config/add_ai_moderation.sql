@@ -133,7 +133,7 @@ INSERT INTO moderation_config (config_key, config_value, value_type, description
 ('ai_moderation_enabled', 'true', 'boolean', '是否啟用AI審核', 1),
 ('auto_approve_threshold', '80', 'number', '自動通過閾值(信心度>=此值自動通過)', 1),
 ('auto_reject_threshold', '90', 'number', '自動拒絕閾值(惡意內容信心度>=此值自動拒絕)', 1),
-('manual_review_threshold', '60', 'number', '人工審核閾值(信心度<此值需人工審核)', 1),
+('manual_review_threshold', '60', 'number', '人工審核閾值(自動通過閥值>信心度>此值需人工審核)', 1),
 ('openai_api_key', '', 'string', 'OpenAI API金鑰', 1),
 ('openai_model', 'gpt-4o-mini', 'string', 'OpenAI模型名稱(用於分類)', 1),
 ('enable_keyword_filter', 'true', 'boolean', '是否啟用關鍵字過濾', 1),

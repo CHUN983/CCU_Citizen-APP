@@ -9,6 +9,20 @@ import time
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
 from ..utils.database import get_db_cursor
+from ..services.moderation_service import ModerationService
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+class ModerationConfig:
+    """審核配置常量"""
+    SENSITIVE_WORDS_TABLE = "sensitive_words"
+    MODERATION_LOGS_TABLE = "moderation_logs"
+    CATEGORIES_TABLE = "categories"
+    CATEGORY_KEYWORDS_TABLE = "category_keywords"
+    AUTO_CATEGORY_THRESHOLD = 70.0  # 自動分類信心度閾值
+    openai_api_key = os.getenv("OPENAI_API_KEY", "")
 
 
 class ModerationDecision:
@@ -194,7 +208,7 @@ class AIContentModerationService:
         """
         調用OpenAI Moderation API檢測內容安全性
         """
-        api_key = AIContentModerationService._get_config('openai_api_key')
+        api_key = ModerationConfig.openai_api_key
 
         if not api_key:
             print("Warning: OpenAI API key not configured")
@@ -214,6 +228,7 @@ class AIContentModerationService:
             }
 
             data = {
+                'model': 'omni-moderation-latest',
                 'input': text
             }
 
@@ -221,7 +236,7 @@ class AIContentModerationService:
                 'https://api.openai.com/v1/moderations',
                 headers=headers,
                 json=data,
-                timeout=10
+                timeout=100
             )
 
             response.raise_for_status()
@@ -267,7 +282,7 @@ class AIContentModerationService:
         """
         調用OpenAI API進行智能分類
         """
-        api_key = AIContentModerationService._get_config('openai_api_key')
+        api_key = ModerationConfig.openai_api_key
         model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
 
         if not api_key:
@@ -292,22 +307,47 @@ class AIContentModerationService:
             ])
 
             # 構建prompt
-            prompt = f"""你是一個市民意見分類助手。請分析以下市民意見，並將其分類到最適合的局處。
+            prompt = f"""你是一個政府市民意見分類助手，負責判斷「市民意見」與「政府各局處」之間的關聯程度。
+            你的任務是：
+            1. 判斷內容是否與任何一個局處明顯相關
+            2. 若有相關，選出最符合的分類
+            3. 若沒有明顯相關，分類為「其他」並給予非常低的信心分數（0～20）
 
-意見標題: {title}
-意見內容: {content}
+            === 市民意見 ===
+            標題：{title}
+            內容：{content}
 
-可用的分類:
-{category_options}
+            === 可用局處分類 ===
+            {category_options}
 
-請以JSON格式回應，包含以下欄位:
-{{
-    "category_id": <最適合的分類ID>,
-    "confidence": <信心度，0-100的數字>,
-    "reason": "<分類理由，簡短說明>"
-}}
+            === 分類標準（請嚴格遵守） ===
+            你必須依照以下準則進行分類與評分：
 
-只需回傳JSON，不要其他說明文字。"""
+            【A. 高相關（80–100 分）】
+            - 市民意見中明確提到該局處負責的具體事項 
+            - 例如：道路、交通號誌 → 交通局；醫療院所 → 衛生局；土地使用 → 都發局
+
+            【B. 中度相關（40–79 分）】
+            - 與某局處略有關聯，但資訊不足以非常確定
+
+            【C. 低相關（0–39 分）】
+            - 內容模糊、無具體事件、無法判斷負責單位
+            - 投訴只是一般抱怨（例如「政府效率低」、「官僚太多」）
+            - 表面看似跟社會議題有關，但沒有明確對象（如「台灣治安很差」→ 論述太抽象）
+
+            【D. 完全無關（0–10 分）】
+            - 與政府業務無明顯關係的內容
+            - 單純抱怨、不屬於任何局處管轄範圍
+
+            === 回應格式（只能回傳 JSON）===
+            {{
+                "category_id": <最適合的分類ID或 其他類別ID>,
+                "confidence": <信心度，0-100>,
+                "reason": "<簡短的分類理由，若不相關需說明為何給低分>"
+            }}
+
+            請務必只回傳 JSON，不要額外文字。
+            """
 
             headers = {
                 'Authorization': f'Bearer {api_key}',
@@ -334,7 +374,7 @@ class AIContentModerationService:
                 'https://api.openai.com/v1/chat/completions',
                 headers=headers,
                 json=data,
-                timeout=15
+                timeout=75
             )
 
             response.raise_for_status()
@@ -429,6 +469,7 @@ class AIContentModerationService:
         suggested_category_id = current_category_id
         category_confidence = 0.0
         matched_keywords = None
+        ai_reason = " "
 
         # 3a. 先嘗試使用關鍵字分類
         enable_category_keywords = AIContentModerationService._get_config(
@@ -479,17 +520,18 @@ class AIContentModerationService:
             # 高信心度且安全 -> 自動通過
             decision = ModerationDecision.APPROVE
             needs_manual_review = False
-            reason = "自動審核通過"
+            reason = f"自動審核通過: {ai_reason}"     
         elif overall_confidence < manual_review_threshold:
-            # 低信心度 -> 需要人工審核
+            # 低信心度 -> 自動拒絕
+            decision = ModerationDecision.REJECT
+            needs_manual_review = False
+            reason = f"相關度較低 ({overall_confidence:.1f}%), 自動拒絕無效意見: {ai_reason}"
+  
+        else:
+            # 中等信心度 -> 需要審核
             decision = ModerationDecision.REVIEW
             needs_manual_review = True
-            reason = f"信心度較低 ({overall_confidence:.1f}%), 需要人工審核"
-        else:
-            # 中等信心度 -> 通過但標記
-            decision = ModerationDecision.APPROVE
-            needs_manual_review = False
-            reason = f"自動審核通過(中等信心度: {overall_confidence:.1f}%)"
+            reason = f"相關度中等 ({overall_confidence:.1f}%), 需要人工審核: {ai_reason}"
 
         return {
             'decision': decision,
@@ -556,6 +598,7 @@ class AIContentModerationService:
         auto_moderation_status: str,
         auto_moderation_score: float,
         auto_category_id: Optional[int],
+        category_confidence: Optional[float],
         moderation_reason: str,
         needs_manual_review: bool
     ) -> bool:
@@ -566,13 +609,20 @@ class AIContentModerationService:
                 final_status = "pending"
             elif auto_moderation_status == "approved":
                 final_status = "approved"
+                ModerationService.approve_opinion(opinion_id, moderator_id=0)
             elif auto_moderation_status == "rejected":
                 final_status = "rejected"
+                ModerationService.reject_opinion(opinion_id, reason=moderation_reason, moderator_id=0)
             else:
                 final_status = "pending"
 
-            with get_db_cursor() as cursor:
-                cursor.execute("""
+            where_category_update_clause = ""
+            if category_confidence is not None and category_confidence >= ModerationConfig.AUTO_CATEGORY_THRESHOLD:
+                where_category_update_clause = "category_id =  %s"
+            else:
+                where_category_update_clause = "category_id = COALESCE(category_id, %s)"
+
+            query = f"""
                     UPDATE opinions
                     SET 
                         status = %s,
@@ -581,9 +631,12 @@ class AIContentModerationService:
                         auto_category_id = %s,
                         moderation_reason = %s,
                         needs_manual_review = %s,
-                        category_id = COALESCE(category_id, %s)
+                        {where_category_update_clause}
                     WHERE id = %s
-                """, (
+                """
+
+            with get_db_cursor() as cursor:
+                cursor.execute(query, (
                     final_status,
                     auto_moderation_status,
                     auto_moderation_score,

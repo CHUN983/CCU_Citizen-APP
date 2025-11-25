@@ -70,6 +70,7 @@ class OpinionBase(BaseModel):
     title: str = Field(..., min_length=5, max_length=200)
     content: str = Field(..., min_length=10)
     category_id: Optional[int] = None
+    category_name: Optional[str] = None
     region: Optional[str] = Field(None, max_length=100)
     latitude: Optional[Decimal] = None
     longitude: Optional[Decimal] = None
@@ -119,7 +120,8 @@ class Opinion(OpinionBase):
     # Related data
     media: List[OpinionMedia] = Field(default_factory=list)
     tags: List[str] = Field(default_factory=list)
-    vote_count: Optional[int] = 0
+    upvotes: Optional[int] = 0
+    downvotes: Optional[int] = 0
     comment_count: Optional[int] = 0
 
     class Config:
@@ -131,7 +133,6 @@ class OpinionWithUser(Opinion):
     username: str
     user_full_name: Optional[str] = None
 
-    media: List[OpinionMedia] = Field(default_factory=list)
 
 
 class OpinionList(BaseModel):

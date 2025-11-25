@@ -20,6 +20,10 @@
             <el-icon><Document /></el-icon>
             <span>意見管理</span>
           </el-menu-item>
+          <el-menu-item index="/history">
+            <el-icon><List /></el-icon>
+            <span>操作紀錄</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -80,7 +84,8 @@
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="vote_count" label="票數" width="80" />
+              <el-table-column prop="upvotes" label="贊同數" width="80" />
+              <el-table-column prop="downvotes" label="反對數" width="80" />
               <el-table-column prop="comment_count" label="留言數" width="90" />
               <el-table-column prop="created_at" label="建立時間" width="180">
                 <template #default="{ row }">

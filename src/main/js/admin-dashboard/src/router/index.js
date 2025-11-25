@@ -19,6 +19,12 @@ const routes = [
     meta: { title: '儀表板', requireAuth: true }
   },
   {
+    path: '/history',
+    name: 'History',
+    component: () => import('../views/History/index.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/opinions',
     name: 'Opinions',
     component: () => import('../views/Opinions/index.vue'),

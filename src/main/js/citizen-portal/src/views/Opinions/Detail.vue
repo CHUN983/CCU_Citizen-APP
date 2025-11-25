@@ -16,6 +16,15 @@
               {{ getStatusText(opinion.status) }}
             </el-tag>
           </div>
+          <div v-if="opinion.tags.length > 0" class="tags-display">
+            <el-tag
+              v-for="tag in opinion.tags"
+              :key="tag"
+              style="margin-right: 10px; margin-top: 10px"
+            >
+              {{ tag }}
+            </el-tag>
+          </div>
         </div>
 
         <!-- Opinion Content -->
@@ -177,6 +186,13 @@
                 <el-icon><User /></el-icon>
                 <span>{{ comment.username || '匿名' }}</span>
               </div>
+              <div class="comment-delete"
+                v-if="isLoggedIn && (role === 'admin' || role === 'moderator')">
+                <el-icon
+                  @click="deleteComment(comment.id)"
+                  style="cursor: pointer; color: #f56c6c"
+                ><CircleClose /></el-icon>
+              </div>
               <div class="comment-date">
                 {{ formatDate(comment.created_at) }}
               </div>
@@ -192,7 +208,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
 import { useOpinionStore } from '../../store/opinion'
@@ -205,6 +221,7 @@ const userStore = useUserStore()
 const opinionStore = useOpinionStore()
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
+const role = computed(() => userStore.role )
 const opinion = computed(() => opinionStore.currentOpinion)
 const loading = ref(false)
 
@@ -255,6 +272,9 @@ const handleVote = async (voteType) => {
   try {
     await opinionStore.voteOpinion(opinionId.value, voteType)
     ElMessage.success('投票成功')
+
+    // Refresh opinion data
+    await fetchOpinion()
   } catch (error) {
     ElMessage.error(error.detail || '投票失敗')
   }
@@ -281,11 +301,11 @@ const handleBookmark = async () => {
   }
 }
 
-const fetchOpinion = async () => {
+const fetchOpinion = async (id = opinionId.value) => {
   loading.value = true
   try {
 
-    await opinionStore.fetchOpinionById(opinionId.value)
+    await opinionStore.fetchOpinionById(id)
   } catch (error) {
     ElMessage.error('載入意見失敗')
     router.back()
@@ -294,10 +314,10 @@ const fetchOpinion = async () => {
   }
 }
 
-const fetchComments = async () => {
+const fetchComments = async (id = opinionId.value) => {
   commentsLoading.value = true
   try {
-    const data = await commentAPI.getList(opinionId.value, { limit: 50 })
+    const data = await commentAPI.getList(id, { limit: 50 })
     comments.value = data || []
   } catch (error) {
     console.error('Failed to fetch comments:', error)
@@ -326,19 +346,29 @@ const handleSubmitComment = async () => {
   }
 }
 
-const getMediaUrl = (media) => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-  return `${baseUrl}/media/files/${media.media_type}/${media.file_path.split('/').pop()}`
-}
-
-const previewMedia = (media) => {
-  window.open(getMediaUrl(media), '_blank')
+const deleteComment = async (commentId) => {
+  try {
+    await commentAPI.delete( commentId)
+    ElMessage.success('留言刪除成功')
+    // Refresh comments
+    await fetchComments()
+  } catch (error) {
+    ElMessage.error(error.detail || '刪除留言失敗')
+  }
 }
 
 onMounted(async () => {
   
   await fetchOpinion()
   await fetchComments()
+})
+
+//router update
+watch(opinionId, (newId, oldId) => {
+  if (newId !== oldId) {
+    fetchOpinion(newId)
+    fetchComments()
+  }
 })
 </script>
 
@@ -450,6 +480,12 @@ onMounted(async () => {
   color: #303133;
 }
 
+.comment-delete {
+  align-items: center;
+  cursor: pointer;
+  color: #f56c6c;
+}
+
 .comment-date {
   font-size: 12px;
   color: #909399;
@@ -510,5 +546,9 @@ onMounted(async () => {
 .media-audio {
   width: 100%;
   max-width: 320px;
+}
+
+.tags-display {
+  margin-top: 10px;
 }
 </style>

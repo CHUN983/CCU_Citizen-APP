@@ -56,14 +56,23 @@
 
             <el-descriptions :column="2" border class="opinion-info">
               <el-descriptions-item label="意見 ID">{{ opinion.id }}</el-descriptions-item>
-              <el-descriptions-item label="發表者">{{ opinion.username }}</el-descriptions-item>
+              <el-descriptions-item label="發表者">{{ opinion.username || '匿名' }}</el-descriptions-item>
               <el-descriptions-item label="地區">{{ opinion.region || '無' }}</el-descriptions-item>
               <el-descriptions-item label="狀態">
                 <el-tag :type="getStatusType(opinion.status)">
                   {{ getStatusText(opinion.status) }}
                 </el-tag>
               </el-descriptions-item>
-              <el-descriptions-item label="票數">{{ opinion.vote_count }}</el-descriptions-item>
+              <el-descriptions-item label="分類">{{ opinion.category_name || '無' }}</el-descriptions-item>
+              <el-descriptions-item label="自動審核">
+                  {{ opinion.needs_manual_review === true ? '否' : '是' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="票數">
+                  <el-icon color="#67c23a"><CaretTop /></el-icon>
+                    {{ opinion.upvotes }}
+                  <el-icon color="#f56c6c"><CaretBottom /></el-icon>
+                    {{ opinion.downvotes }}
+              </el-descriptions-item>
               <el-descriptions-item label="留言數">{{ opinion.comment_count }}</el-descriptions-item>
               <el-descriptions-item label="建立時間">
                 {{ formatDate(opinion.created_at) }}
@@ -73,6 +82,11 @@
               </el-descriptions-item>
             </el-descriptions>
 
+            <!-- AI審查理由 -->
+            <div class="opinion-content">
+              <h3>AI審查建議</h3>
+              <p>{{ opinion.moderation_reason }}</p>
+            </div>
             <!-- 意見內容 -->
             <div class="opinion-content">
               <h3>意見內容</h3>
@@ -136,7 +150,7 @@
                 v-if="opinion.status === 'pending'"
                 type="danger"
                 size="large"
-                @click="handleReject"
+                @click="handleReject(opinion.id)"
               >
                 <el-icon><Close /></el-icon>
                 拒絕意見

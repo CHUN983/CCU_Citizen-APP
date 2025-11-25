@@ -103,6 +103,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { useNotificationStore } from '../store/notification'
 import { ElMessage } from 'element-plus'
+import { Star, ChatDotRound, CircleCheck, CircleClose, Bell } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()

@@ -11,7 +11,7 @@ from .tag import Tag, OpinionTag
 from .notification import Notification, NotificationType
 from .category import Category
 from .subscription import Subscription
-from .opinion_history import OpinionHistory, ActionType
+from .opinion_history import OpinionHistoryList,OpinionHistoryItem, ActionType
 
 __all__ = [
     'User', 'UserRole',
@@ -23,5 +23,5 @@ __all__ = [
     'Notification', 'NotificationType',
     'Category',
     'Subscription',
-    'OpinionHistory', 'ActionType'
+    'OpinionHistoryList', 'OpinionHistoryItem', 'ActionType'
 ]

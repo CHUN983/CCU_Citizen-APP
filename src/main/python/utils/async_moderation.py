@@ -114,6 +114,7 @@ async def process_opinion_moderation(
             auto_moderation_status=auto_moderation_status,
             auto_moderation_score=text_result['confidence'],
             auto_category_id=text_result['suggested_category_id'],
+            category_confidence=text_result['category_confidence'],
             moderation_reason=final_reason,
             needs_manual_review=needs_manual_review
         )

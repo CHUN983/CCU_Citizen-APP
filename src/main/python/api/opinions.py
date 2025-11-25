@@ -4,9 +4,10 @@ Opinion API routes
 
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from typing import Optional, List
-from ..models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus
+
+from ..models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus, OpinionWithUser
 from ..models.comment import Comment, CommentCreate
-from ..models.vote import VoteCreate, VoteStats
+from ..models.vote import VoteCreate
 from ..services.opinion_service import OpinionService
 from ..services.ai_content_moderation_service import AIContentModerationService
 from ..api.auth import get_current_user
@@ -63,10 +64,11 @@ async def get_opinions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     status: Optional[OpinionStatus] = None,
-    category_id: Optional[int] = None
+    category_id: Optional[int] = None,
+    sort_by: Optional[str] = None
 ):
     """Get paginated list of opinions"""
-    return OpinionService.get_opinions(page, page_size, status, category_id)
+    return OpinionService.get_opinions(page, page_size, status, category_id, sort_by)
 
 #固定路徑要放在參數路徑前面，否則會被當成參數處理
 @router.get("/collect", response_model=OpinionList)
@@ -82,7 +84,7 @@ async def get_bookmarked_opinions(
         page_size=page_size
     )
 
-@router.get("/{opinion_id}", response_model=Opinion)
+@router.get("/{opinion_id}", response_model=OpinionWithUser)
 async def get_opinion(opinion_id: int):
     """Get opinion by ID"""
     opinion = OpinionService.get_opinion_by_id(opinion_id, increment_view=True)
@@ -128,6 +130,7 @@ async def get_comments(
 
     return comments
 
+
 @router.post("/{opinion_id}/vote", status_code=200)
 async def vote_opinion(
     opinion_id: int,
@@ -148,16 +151,6 @@ async def vote_opinion(
 
     return {"message": "Vote recorded successfully"}
 
-@router.get("/{opinion_id}/votes", response_model=VoteStats)
-async def get_vote_stats(opinion_id: int):
-    """Get like/support counts for an opinion"""
-    # 先確認 opinion 是否存在
-    opinion = OpinionService.get_opinion_by_id(opinion_id)
-    if not opinion:
-        raise HTTPException(status_code=404, detail="Opinion not found")
-
-    stats = OpinionService.get_vote_stats(opinion_id)
-    return stats
 
 
 
