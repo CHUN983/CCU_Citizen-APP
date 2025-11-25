@@ -3,7 +3,7 @@ Notification service
 """
 
 from typing import List, Optional
-from ..models.notification import Notification, NotificationCreate
+from ..models.notification import Notification, NotificationCreate, NotificationType
 from ..utils.database import get_db_cursor
 
 

@@ -227,6 +227,48 @@ class OpinionService:
             )
 
     @staticmethod
+    def get_similar_opinions(opinion_id: int, title: str, content: str, category_id: int, limit: int = 5) -> List[OpinionWithUser]:
+        """Get similar opinions based on category and tags"""
+        query = """
+            SELECT
+                o.id,
+                o.user_id,
+                o.status,
+                o.created_at,
+                o.updated_at,
+                u.username,
+                o.title,
+                o.content,
+                MATCH(o.title, o.content) AGAINST (%s IN NATURAL LANGUAGE MODE) AS ft_score
+            FROM opinions as o
+            JOIN users as u ON o.user_id = u.id
+            WHERE o.category_id = %s AND o.merged_to_id IS NULL
+            AND o.status IN ('approved', 'resolved')
+            AND o.is_public = TRUE
+            AND o.id <> %s
+            ORDER BY ft_score DESC
+            LIMIT %s;
+        """
+
+        search_text = f"{title} {content}"
+
+        with get_db_cursor() as cursor:
+            cursor.execute(query, (search_text, category_id, opinion_id, limit))
+            opinions = cursor.fetchall()
+
+            # Get tags for each opinion
+            for opinion in opinions:
+                cursor.execute(
+                    """SELECT t.name FROM tags t
+                       JOIN opinion_tags ot ON t.id = ot.tag_id
+                       WHERE ot.opinion_id = %s""",
+                    (opinion['id'],)
+                )
+                opinion['tags'] = [row['name'] for row in cursor.fetchall()]
+
+            return [OpinionWithUser(**opinion) for opinion in opinions]
+
+    @staticmethod
     def add_comment(opinion_id: int, user_id: int, comment_data: CommentCreate) -> Optional[Comment]:
         """Add comment to opinion"""
         query = """
