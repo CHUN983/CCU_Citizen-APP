@@ -9,8 +9,8 @@ import time
 import requests
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
-from ..utils.database import get_db_cursor
-from ..services.opinion_service import OpinionService
+from utils.database import get_db_cursor
+from services.opinion_service import OpinionService
 from dotenv import load_dotenv
 
 # Load environment variables from .env file

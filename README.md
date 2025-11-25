@@ -62,8 +62,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 3. 啟動 FastAPI 服務
-$env:PYTHONPATH="src/main/python"
-python -m uvicorn src.main.python.core.app:app --reload --host 0.0.0.0 --port 8000
+cd src/main/python
+python -m uvicorn core.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 **後端服務地址：**

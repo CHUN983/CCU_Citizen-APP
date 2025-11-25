@@ -6,10 +6,10 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
-from ..services.moderation_service import ModerationService
-from ..models.user import UserRole
-from ..api.auth import get_current_user
-from ..models.opinion_history import OpinionHistoryList
+from services.moderation_service import ModerationService
+from models.user import UserRole
+from api.auth import get_current_user
+from models.opinion_history import OpinionHistoryList
 
 router = APIRouter(prefix="/admin", tags=["Moderation"])
 
