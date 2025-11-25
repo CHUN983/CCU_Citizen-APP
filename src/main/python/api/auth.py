@@ -4,9 +4,9 @@ Authentication API routes
 
 from fastapi import APIRouter, HTTPException, Depends, Header
 from typing import Optional
-from ..models.user import User, UserCreate, UserLogin, Token
-from ..services.auth_service import AuthService
-from ..utils.security import get_user_from_token
+from models.user import User, UserCreate, UserLogin, Token
+from services.auth_service import AuthService
+from utils.security import get_user_from_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

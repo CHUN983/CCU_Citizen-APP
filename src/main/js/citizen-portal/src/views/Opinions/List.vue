@@ -90,7 +90,7 @@
                 v-for="opinion in opinions"
                 :key="opinion.id"
                 class="opinion-card"
-                @click="$router.push(`/opinions/${opinion.id}`)"
+                @click="$router.push(`/opinions/${opinion.merged_to_id ?? opinion.id}`)"
               >
                 <div class="opinion-main">
                   <h3>{{ opinion.title }}</h3>

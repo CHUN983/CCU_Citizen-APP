@@ -9,7 +9,7 @@ import time
 import base64
 from typing import Dict, Optional
 from pathlib import Path
-from ..services.ai_content_moderation_service import ModerationDecision, AIContentModerationService, ModerationConfig
+from services.ai_content_moderation_service import ModerationDecision, AIContentModerationService, ModerationConfig
 
 
 class AIMediaModerationService:
