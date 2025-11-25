@@ -137,7 +137,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useDashBoardStore } from '../../store/dashboard'
+import { useDashBoardStore } from '../../store/DashBoard'
 import { ElMessage } from 'element-plus'
 
 const store = useDashBoardStore()
