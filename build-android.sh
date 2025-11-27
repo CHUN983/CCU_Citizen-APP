@@ -22,7 +22,7 @@ if [ $? -eq 0 ]; then
         echo ""
         echo "🚀 Or use this command in Windows PowerShell:"
         echo "   cd \\\\wsl\$\\Ubuntu\\root\\project\\citizenApp\\src\\main\\js\\citizen-portal\\android"
-        echo "   & \"C:\\Program Files\\Android\\Android Studio\\bin\\studio64.exe\" ."
+        echo "   & \"E:\\program_file\\Android\\Android Studio\\bin\\studio64.exe\" ."
     else
         echo "❌ Capacitor sync failed!"
         exit 1
