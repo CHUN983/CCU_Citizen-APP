@@ -22,9 +22,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'element-plus': ['element-plus'],
-          'vue-vendor': ['vue', 'vue-router', 'pinia']
+        manualChunks(id) {
+          // 将 node_modules 中的依赖打包成一个 vendor chunk
+          if (id.includes('node_modules')) {
+            return 'vendor'
+          }
         }
       }
     }

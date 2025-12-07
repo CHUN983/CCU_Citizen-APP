@@ -1,91 +1,59 @@
 #!/bin/bash
 
-# 安全地將專案同步到 Windows 的腳本
-# 排除問題檔案和不必要的目錄
-
-echo "🔧 WSL2 → Windows 專案同步工具"
-echo "================================"
+echo "🚀 開始 WSL2 → Windows 同步流程..."
 echo ""
 
-# 設定路徑
-WSL_PROJECT="/root/project/citizenApp/src/main/js/citizen-portal"
-WINDOWS_TARGET="/mnt/c/AndroidProjects/citizen-portal"
-
-# 顯示設定
-echo "📂 來源: ${WSL_PROJECT}"
-echo "📂 目標: ${WINDOWS_TARGET}"
-echo ""
-
-# 詢問是否繼續
-read -p "是否繼續? (y/n): " confirm
-if [ "$confirm" != "y" ]; then
-    echo "❌ 取消操作"
-    exit 0
-fi
-
-echo ""
-echo "🔨 步驟 1/4: 建置 Vue 專案..."
-cd "${WSL_PROJECT}"
+# 1. 建置 Vue app
+echo "📦 步驟 1/3: 建置 Vue app..."
+cd /root/project/citizenApp/src/main/js/citizen-portal
 npm run build
 
 if [ $? -ne 0 ]; then
-    echo "❌ 建置失敗!"
+    echo "❌ Vue 建置失敗！"
     exit 1
 fi
 
+# 2. 同步到 Android
 echo ""
-echo "🔄 步驟 2/4: 同步 Capacitor..."
+echo "🔄 步驟 2/3: 同步到 Android 平台..."
 npx cap sync
 
 if [ $? -ne 0 ]; then
-    echo "❌ 同步失敗!"
+    echo "❌ Capacitor 同步失敗！"
+    exit 1
+fi
+
+# 3. 複製 android 目錄到 Windows
+echo ""
+echo "📁 步驟 3/3: 同步到 Windows 專案..."
+WINDOWS_PROJECT="/mnt/c/Users/user/AndroidProjects/citizenApp/src/main/js/citizen-portal"
+
+# 只複製 android 目錄（避免複製整個專案造成時間浪費）
+rsync -av --delete \
+    /root/project/citizenApp/src/main/js/citizen-portal/android/ \
+    $WINDOWS_PROJECT/android/
+
+if [ $? -ne 0 ]; then
+    echo "❌ 複製到 Windows 失敗！"
     exit 1
 fi
 
 echo ""
-echo "📁 步驟 3/4: 建立 Windows 目錄..."
-mkdir -p "${WINDOWS_TARGET}"
-
+echo "✅ 同步完成！"
 echo ""
-echo "📋 步驟 4/4: 複製檔案到 Windows..."
-echo "   (排除不必要的檔案,避免相容性問題)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📱 下一步操作："
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-
-# 使用 rsync 複製,排除問題檔案
-rsync -av --progress \
-    --exclude 'node_modules/' \
-    --exclude '.git/' \
-    --exclude 'dist/' \
-    --exclude '.vite/' \
-    --exclude '.gradle/' \
-    --exclude 'build/' \
-    --exclude 'android/.gradle/' \
-    --exclude 'android/app/build/' \
-    --exclude 'android/build/' \
-    --exclude 'ios/App/Pods/' \
-    --exclude 'ios/App/build/' \
-    --exclude '.DS_Store' \
-    --exclude '*.log' \
-    --exclude '*~' \
-    "${WSL_PROJECT}/" \
-    "${WINDOWS_TARGET}/"
-
-if [ $? -eq 0 ]; then
-    echo ""
-    echo "✅ 複製完成!"
-    echo ""
-    echo "📱 下一步:"
-    echo "1. 開啟 Android Studio (在 Windows)"
-    echo "2. File → Open"
-    echo "3. 選擇: C:\\AndroidProjects\\citizen-portal\\android"
-    echo "4. 等待 Gradle 同步完成"
-    echo "5. 點擊 Run (▶️) 執行 APP"
-    echo ""
-    echo "💡 提示: 如果 Gradle 同步失敗,請執行:"
-    echo "   Build → Clean Project"
-    echo "   File → Invalidate Caches... → Invalidate and Restart"
-else
-    echo ""
-    echo "❌ 複製失敗!"
-    exit 1
-fi
+echo "方案 1: 使用 Android Studio (推薦)"
+echo "  1. 在 Android Studio 中點擊 File → Sync Project with Gradle Files"
+echo "  2. 等待同步完成"
+echo "  3. 點擊 Run 按鈕 (▶️)"
+echo ""
+echo "方案 2: 使用命令列建置"
+echo "  在 Windows PowerShell 中執行："
+echo "  cd C:\\Users\\user\\AndroidProjects\\citizenApp\\src\\main\\js\\citizen-portal\\android"
+echo "  .\\gradlew assembleDebug"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
