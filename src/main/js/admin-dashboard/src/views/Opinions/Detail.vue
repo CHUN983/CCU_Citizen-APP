@@ -20,6 +20,10 @@
             <el-icon><Document /></el-icon>
             <span>意見管理</span>
           </el-menu-item>
+          <el-menu-item index="/history">
+            <el-icon><List /></el-icon>
+            <span>操作紀錄</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -199,6 +203,8 @@ const handleApprove = async () => {
       cancelButtonText: '取消',
       type: 'warning'
     })
+
+
 
     await opinionAPI.approveOpinion(opinion.value.id)
     ElMessage.success('核准成功！')

@@ -3,15 +3,15 @@ Opinion service for managing citizen submissions
 """
 
 from typing import List, Optional
-from ..models.opinion import (
+from models.opinion import (
     Opinion, OpinionCreate, OpinionUpdate, OpinionWithUser,
     OpinionList, OpinionStatus
 )
-from ..models.comment import Comment, CommentCreate
-from ..models.vote import Vote, VoteCreate, VoteType
-from ..models.notification import NotificationCreate, NotificationType
-from ..utils.database import get_db_cursor, get_db_connection
-from ..services.notification_service import NotificationService
+from models.comment import Comment, CommentCreate
+from models.vote import Vote, VoteCreate, VoteType
+from models.notification import NotificationCreate, NotificationType
+from utils.database import get_db_cursor, get_db_connection
+from services.notification_service import NotificationService
 
 
 class OpinionService:
@@ -227,6 +227,143 @@ class OpinionService:
             )
 
     @staticmethod
+    def get_bookmarked_opinions(
+        user_id: int,
+        page: int = 1,
+        page_size: int = 5
+    ) -> OpinionList:
+        """Get paginated list of opinions bookmarked by user"""
+        offset = (page - 1) * page_size
+
+        # 1) 先算總數
+        count_query = """
+            SELECT COUNT(*) AS total
+            FROM collections c
+            JOIN opinions o ON c.opinion_id = o.id
+            WHERE c.user_id = %s AND o.is_public = TRUE
+        """
+
+        # 2) 再拿實際資料
+        data_query = """
+            SELECT 
+                o.*, 
+                u.username,
+                u.full_name AS user_full_name,
+                cat.name AS category_name,
+                -- like 數量
+                (
+                    SELECT COUNT(*) 
+                    FROM votes v 
+                    WHERE v.opinion_id = o.id 
+                      AND v.vote_type = %s
+                ) AS upvotes,
+                -- support 數量
+                (
+                    SELECT COUNT(*) 
+                    FROM votes v 
+                    WHERE v.opinion_id = o.id 
+                      AND v.vote_type = %s
+                ) AS downvotes,
+                -- 留言數
+                (
+                    SELECT COUNT(*) 
+                    FROM comments cmt
+                    WHERE cmt.opinion_id = o.id
+                      AND cmt.is_deleted = FALSE
+                ) AS comment_count
+            FROM collections c
+            JOIN opinions o ON c.opinion_id = o.id
+            JOIN users u ON o.user_id = u.id
+            JOIN categories cat ON o.category_id = cat.id
+            WHERE c.user_id = %s AND o.is_public = TRUE
+            ORDER BY c.created_at DESC
+            LIMIT %s OFFSET %s
+        """
+
+        with get_db_cursor() as cursor:
+            # total
+            cursor.execute(count_query, (user_id,))
+            total = cursor.fetchone()['total']
+
+            # data
+            cursor.execute(
+                data_query,
+                (
+                    VoteType.LIKE.value,      # 'like'
+                    VoteType.DISLIKE.value,    # 'support'
+                    user_id,
+                    page_size,
+                    offset,
+                )
+            )
+            rows = cursor.fetchall()
+
+            # 補 tags
+            for row in rows:
+                cursor.execute(
+                    """
+                    SELECT t.name 
+                    FROM tags t
+                    JOIN opinion_tags ot ON t.id = ot.tag_id
+                    WHERE ot.opinion_id = %s
+                    """,
+                    (row['id'],)
+                )
+                row['tags'] = [r['name'] for r in cursor.fetchall()]
+
+            items = [OpinionWithUser(**row) for row in rows]
+
+            return OpinionList(
+                total=total,
+                page=page,
+                page_size=page_size,
+                items=items
+            )
+
+
+    @staticmethod
+    def get_similar_opinions(opinion_id: int, title: str, content: str, category_id: int, limit: int = 5) -> List[OpinionWithUser]:
+        """Get similar opinions based on category and tags"""
+        query = """
+            SELECT
+                o.id,
+                o.user_id,
+                o.status,
+                o.created_at,
+                o.updated_at,
+                u.username,
+                o.title,
+                o.content,
+                MATCH(o.title, o.content) AGAINST (%s IN NATURAL LANGUAGE MODE) AS ft_score
+            FROM opinions as o
+            JOIN users as u ON o.user_id = u.id
+            WHERE o.category_id = %s AND o.merged_to_id IS NULL
+            AND o.status IN ('approved', 'resolved')
+            AND o.is_public = TRUE
+            AND o.id <> %s
+            ORDER BY ft_score DESC
+            LIMIT %s;
+        """
+
+        search_text = f"{title} {content}"
+
+        with get_db_cursor() as cursor:
+            cursor.execute(query, (search_text, category_id, opinion_id, limit))
+            opinions = cursor.fetchall()
+
+            # Get tags for each opinion
+            for opinion in opinions:
+                cursor.execute(
+                    """SELECT t.name FROM tags t
+                       JOIN opinion_tags ot ON t.id = ot.tag_id
+                       WHERE ot.opinion_id = %s""",
+                    (opinion['id'],)
+                )
+                opinion['tags'] = [row['name'] for row in cursor.fetchall()]
+
+            return [OpinionWithUser(**opinion) for opinion in opinions]
+
+    @staticmethod
     def add_comment(opinion_id: int, user_id: int, comment_data: CommentCreate) -> Optional[Comment]:
         """Add comment to opinion"""
         query = """
@@ -352,98 +489,7 @@ class OpinionService:
             row = cursor.fetchone()
             return row is not None
     
-    @staticmethod
-    def get_bookmarked_opinions(
-        user_id: int,
-        page: int = 1,
-        page_size: int = 5
-    ) -> OpinionList:
-        """Get paginated list of opinions bookmarked by user"""
-        offset = (page - 1) * page_size
-
-        # 1) 先算總數
-        count_query = """
-            SELECT COUNT(*) AS total
-            FROM collections c
-            JOIN opinions o ON c.opinion_id = o.id
-            WHERE c.user_id = %s AND o.is_public = TRUE
-        """
-
-        # 2) 再拿實際資料
-        data_query = """
-            SELECT 
-                o.*, 
-                u.username,
-                u.full_name AS user_full_name,
-                -- like 數量
-                (
-                    SELECT COUNT(*) 
-                    FROM votes v 
-                    WHERE v.opinion_id = o.id 
-                      AND v.vote_type = %s
-                ) AS upvotes,
-                -- support 數量
-                (
-                    SELECT COUNT(*) 
-                    FROM votes v 
-                    WHERE v.opinion_id = o.id 
-                      AND v.vote_type = %s
-                ) AS downvotes,
-                -- 留言數
-                (
-                    SELECT COUNT(*) 
-                    FROM comments cmt
-                    WHERE cmt.opinion_id = o.id
-                      AND cmt.is_deleted = FALSE
-                ) AS comment_count
-            FROM collections c
-            JOIN opinions o ON c.opinion_id = o.id
-            JOIN users u ON o.user_id = u.id
-            WHERE c.user_id = %s AND o.is_public = TRUE
-            ORDER BY c.created_at DESC
-            LIMIT %s OFFSET %s
-        """
-
-        with get_db_cursor() as cursor:
-            # total
-            cursor.execute(count_query, (user_id,))
-            total = cursor.fetchone()['total']
-
-            # data
-            cursor.execute(
-                data_query,
-                (
-                    VoteType.LIKE.value,      # 'like'
-                    VoteType.DISLIKE.value,    # 'support'
-                    user_id,
-                    page_size,
-                    offset,
-                )
-            )
-            rows = cursor.fetchall()
-
-            # 補 tags
-            for row in rows:
-                cursor.execute(
-                    """
-                    SELECT t.name 
-                    FROM tags t
-                    JOIN opinion_tags ot ON t.id = ot.tag_id
-                    WHERE ot.opinion_id = %s
-                    """,
-                    (row['id'],)
-                )
-                row['tags'] = [r['name'] for r in cursor.fetchall()]
-
-            items = [OpinionWithUser(**row) for row in rows]
-
-            return OpinionList(
-                total=total,
-                page=page,
-                page_size=page_size,
-                items=items
-            )
-
+    
 
     @staticmethod
     def _add_tags(cursor, opinion_id: int, tag_names: List[str]):
