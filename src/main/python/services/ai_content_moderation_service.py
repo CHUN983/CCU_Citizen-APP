@@ -22,7 +22,7 @@ class ModerationConfig:
     MODERATION_LOGS_TABLE = "moderation_logs"
     CATEGORIES_TABLE = "categories"
     CATEGORY_KEYWORDS_TABLE = "category_keywords"
-    AUTO_CATEGORY_THRESHOLD = 70.0  # 自動分類信心度閾值
+    AUTO_CATEGORY_THRESHOLD = 60.0  # 自動分類信心度閾值
     SIMILARITY_THRESHOLD = 0.8  # 相似度閾值
     openai_api_key = os.getenv("OPENAI_API_KEY", "")
 
@@ -607,12 +607,14 @@ class AIContentModerationService:
         """更新意見的審核狀態（包含真正的 status）"""
         try:
 
-
+            print(f"[Classify] Updating opinion {opinion_id} moderation status to {auto_moderation_status}, score: {category_confidence}, category: {auto_category_id}")
             where_category_update_clause = ""
             if category_confidence is not None and category_confidence >= ModerationConfig.AUTO_CATEGORY_THRESHOLD:
                 where_category_update_clause = "category_id =  %s"
             else:
                 where_category_update_clause = "category_id = COALESCE(category_id, %s)"
+
+
 
             query = f"""
                     UPDATE opinions
@@ -661,15 +663,15 @@ class AIContentModerationService:
         """
         調用OpenAI API進行智能分類
         """
-        import requests
+
         api_key = ModerationConfig.openai_api_key
         model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
 
         # 獲取可用的候選意見列表
         candidate_opinions = OpinionService.get_similar_opinions(
-            opinion_id, owner['title'], owner['content'], owner['category_id'])
-        candidates = []
+            opinion_id, owner['title'], owner['content'], owner['category_id'], 5)
 
+        # print(f"[Merge] Found {len(candidate_opinions)} candidate opinions")
         candidates: List[Dict] = []
         for c in candidate_opinions:
             candidates.append({
@@ -682,7 +684,8 @@ class AIContentModerationService:
 
         if not candidates:
             return None, None
-        
+        # print(f"[Merge] candidates: {candidates}")
+
         payload = {
             "new_opinion": {
                 "id": opinion_id,
@@ -708,7 +711,8 @@ class AIContentModerationService:
             "same_topic": true,
             "similarity": 0.92,
             "reason": "簡短中文說明為什麼這樣判斷"
-            }}
+            }},
+            ...
         ]
         }}
 
@@ -775,6 +779,7 @@ class AIContentModerationService:
         if not isinstance(results, list):
             return None, None
 
+        print(f"[Merge] Candidate results: {results}")
         # 依 same_topic + similarity 門檻篩選最佳候選
         threshold = float(getattr(ModerationConfig, "SIMILARITY_THRESHOLD", 0.8))
         filtered = [

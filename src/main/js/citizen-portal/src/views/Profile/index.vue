@@ -72,6 +72,23 @@
                 </p>
                 <div class="bookmark-meta">
                   <el-tag size="small">{{ op.category_name }}</el-tag>
+
+                  <!-- tags -->
+                  <template v-if="op.tags?.length">
+                    <el-tag
+                      v-for="tag in op.tags"
+                      :key="tag"
+                      size="small"
+                      type="info"
+                      style="margin-left:6px"
+                    >
+                      {{ tag }}
+                    </el-tag>
+                  </template>
+
+                  <el-tag size="small" :type="getStatusType(op.status)">
+                    {{ getStatusText(op.status) }}
+                  </el-tag>
                   <span class="author">
                     <el-icon><UserFilled /></el-icon>
                     {{ op.username || '匿名' }}
@@ -133,6 +150,30 @@ const fetchBookmarks = async () => {
 const handlePageChange = (page) => {
   currentPage.value = page
   fetchBookmarks()
+}
+
+const getStatusType = (status) => {
+  const typeMap = {
+    'pending': 'warning',
+    'approved': 'success',
+    'rejected': 'danger',
+    'under_review': 'info',
+    'in_progress': 'primary',
+    'completed': 'success'
+  }
+  return typeMap[status] || 'info'
+}
+
+const getStatusText = (status) => {
+  const statusMap = {
+    'pending': '待審核',
+    'approved': '已通過',
+    'rejected': '已拒絕',
+    'under_review': '審核中',
+    'in_progress': '處理中',
+    'completed': '已完成'
+  }
+  return statusMap[status] || status
 }
 
 const getRoleType = (role) => {
@@ -216,5 +257,26 @@ onMounted(async () => {
   border-color: #409eff;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+}
+
+.bookmark-content {
+  color: #606266;
+  font-size: 14px;
+  margin: 0 0 10px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.bookmark-meta {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #909399;
 }
 </style>

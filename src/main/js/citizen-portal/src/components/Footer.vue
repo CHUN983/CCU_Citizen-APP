@@ -1,6 +1,6 @@
 <template>
   <div class="footer-container">
-    <p>&copy; 2024 市民意見平台 - Citizen Portal | 讓市民聲音被聽見</p>
+    <p>&copy; 2025 市民意見平台 - Citizen Portal | 讓市民聲音被聽見</p>
   </div>
 </template>
 

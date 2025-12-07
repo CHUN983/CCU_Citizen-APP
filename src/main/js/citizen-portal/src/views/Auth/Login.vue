@@ -99,6 +99,7 @@ const handleLogin = async () => {
         })
 
         ElMessage.success('登入成功！')
+        await userStore.getProfile()
 
         // Redirect to original page or home
         const redirect = route.query.redirect || '/'
