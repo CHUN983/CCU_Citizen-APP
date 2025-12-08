@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core'
 // 在移動應用中使用 WSL2 IP，在網頁中使用相對路徑
 const getBaseURL = () => {
   if (Capacitor.isNativePlatform()) {
-    // Android 模擬器訪問 WSL2 上的後端
+    // Android 模擬器訪問 WSL2 上的後端或是python api開啟的port
     return 'http://172.30.148.62:8000'
   }
   return '/api'
