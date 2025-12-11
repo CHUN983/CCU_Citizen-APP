@@ -5,7 +5,7 @@ import { Capacitor } from '@capacitor/core'
 const getBaseURL = () => {
   if (Capacitor.isNativePlatform()) {
     // Android 模擬器訪問 WSL2 上的後端或是python api開啟的port
-    return 'http://172.30.148.62:8000'
+    return 'https://10.0.2.2:8000'
   }
   return '/api'
 }

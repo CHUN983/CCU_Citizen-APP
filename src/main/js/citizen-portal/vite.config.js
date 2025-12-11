@@ -13,8 +13,9 @@ export default defineConfig({
     // },
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'https://localhost:8000',
         changeOrigin: true,
+        secure: false, // ← 必加！否則本機自簽證書會被擋
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
