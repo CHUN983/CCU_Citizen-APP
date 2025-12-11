@@ -23,22 +23,22 @@ class TestNotificationRetrieval:
             {
                 "id": 1,
                 "user_id": 1,
-                "type": "opinion_approved",
-                "message": "您的意見已被核准",
+                "type": "approved",
+                "title": "您的意見已被核准",
                 "is_read": False,
                 "created_at": "2025-10-24T10:00:00"
             },
             {
                 "id": 2,
                 "user_id": 1,
-                "type": "new_comment",
-                "message": "您的意見收到新留言",
+                "type": "comment",
+                "title": "您的意見收到新留言",
                 "is_read": True,
                 "created_at": "2025-10-23T15:30:00"
             }
         ]
 
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = mock_notifications
 
             # 執行請求
@@ -63,14 +63,14 @@ class TestNotificationRetrieval:
             {
                 "id": 1,
                 "user_id": 1,
-                "type": "opinion_approved",
-                "message": "您的意見已被核准",
+                "type": "approved",
+                "title": "您的意見已被核准",
                 "is_read": False,
                 "created_at": "2025-10-24T10:00:00"
             }
         ]
 
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = mock_unread_notifications
 
             # 執行請求（僅未讀）
@@ -101,7 +101,7 @@ class TestNotificationRetrieval:
         測試目標: 驗證新用戶或無通知時返回空陣列
         優先級: Medium
         """
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = []
 
             response = test_client.get("/notifications", headers=auth_headers_user)
@@ -121,7 +121,7 @@ class TestNotificationMarkAsRead:
         """
         notification_id = 1
 
-        with patch('services.notification_service.NotificationService.mark_as_read') as mock_mark:
+        with patch('api.notifications.NotificationService.mark_as_read') as mock_mark:
             mock_mark.return_value = True  # 成功標記
 
             # 執行標記請求
@@ -145,7 +145,7 @@ class TestNotificationMarkAsRead:
         """
         notification_id = 99999  # 不存在的通知 ID
 
-        with patch('services.notification_service.NotificationService.mark_as_read') as mock_mark:
+        with patch('api.notifications.NotificationService.mark_as_read') as mock_mark:
             mock_mark.return_value = False  # 標記失敗（通知不存在）
 
             response = test_client.post(
@@ -165,7 +165,7 @@ class TestNotificationMarkAsRead:
         """
         other_user_notification_id = 100
 
-        with patch('services.notification_service.NotificationService.mark_as_read') as mock_mark:
+        with patch('api.notifications.NotificationService.mark_as_read') as mock_mark:
             # Service 應該檢查 user_id 並返回 False（權限不足）
             mock_mark.return_value = False
 
@@ -191,15 +191,15 @@ class TestNotificationTypes:
             {
                 "id": 1,
                 "user_id": 1,
-                "type": "opinion_approved",
-                "message": "您的意見「改善公園設施」已被核准",
+                "type": "approved",
+                "title": "您的意見「改善公園設施」已被核准",
                 "related_id": 123,  # 意見 ID
                 "is_read": False,
                 "created_at": "2025-10-24T10:00:00"
             }
         ]
 
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = mock_notifications
 
             response = test_client.get("/notifications", headers=auth_headers_user)
@@ -219,15 +219,15 @@ class TestNotificationTypes:
             {
                 "id": 2,
                 "user_id": 1,
-                "type": "new_comment",
-                "message": "user123 在您的意見下留言",
+                "type": "comment",
+                "title": "user123 在您的意見下留言",
                 "related_id": 456,  # 留言 ID
                 "is_read": False,
                 "created_at": "2025-10-24T11:00:00"
             }
         ]
 
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = mock_notifications
 
             response = test_client.get("/notifications", headers=auth_headers_user)
@@ -246,15 +246,15 @@ class TestNotificationTypes:
             {
                 "id": 3,
                 "user_id": 1,
-                "type": "vote_milestone",
-                "message": "您的意見已獲得 100 票支持！",
+                "type": "status_change",
+                "title": "您的意見已獲得 100 票支持！",
                 "related_id": 789,  # 意見 ID
                 "is_read": False,
                 "created_at": "2025-10-24T12:00:00"
             }
         ]
 
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = mock_notifications
 
             response = test_client.get("/notifications", headers=auth_headers_user)
@@ -273,15 +273,15 @@ class TestNotificationTypes:
             {
                 "id": 4,
                 "user_id": 1,
-                "type": "opinion_rejected",
-                "message": "您的意見已被拒絕：內容違反社群規範",
+                "type": "rejected",
+                "title": "您的意見已被拒絕：內容違反社群規範",
                 "related_id": 321,
                 "is_read": False,
                 "created_at": "2025-10-24T13:00:00"
             }
         ]
 
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = mock_notifications
 
             response = test_client.get("/notifications", headers=auth_headers_user)
@@ -334,14 +334,14 @@ class TestNotificationIntegration:
             {
                 "id": 1,
                 "user_id": 1,
-                "type": "opinion_approved",
-                "message": "您的意見已被核准",
+                "type": "approved",
+                "title": "您的意見已被核准",
                 "is_read": False,
                 "created_at": "2025-10-24T10:00:00"
             }
         ]
 
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = mock_notifications
 
             # 獲取通知
@@ -352,7 +352,7 @@ class TestNotificationIntegration:
             assert notifications[0]["is_read"] is False
 
         # 步驟 4: 標記為已讀
-        with patch('services.notification_service.NotificationService.mark_as_read') as mock_mark:
+        with patch('api.notifications.NotificationService.mark_as_read') as mock_mark:
             mock_mark.return_value = True
 
             mark_response = test_client.post(
@@ -375,16 +375,16 @@ class TestNotificationIntegration:
         """
         # 用戶 1 的通知
         user1_notifications = [
-            {"id": 1, "user_id": 1, "message": "User 1 notification", "is_read": False}
+            {"id": 1, "user_id": 1, "title": "User 1 notification", "is_read": False}
         ]
 
         # 用戶 2（管理員）的通知
         user2_notifications = [
-            {"id": 2, "user_id": 2, "message": "Admin notification", "is_read": False}
+            {"id": 2, "user_id": 2, "title": "Admin notification", "is_read": False}
         ]
 
         # 測試用戶 1
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = user1_notifications
 
             response1 = test_client.get("/notifications", headers=auth_headers_user)
@@ -401,7 +401,7 @@ class TestNotificationIntegration:
         auth_headers_admin_real = {"Authorization": f"Bearer {admin_token}"}
 
         # 測試管理員
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = user2_notifications
 
             response2 = test_client.get("/notifications", headers=auth_headers_admin_real)
@@ -425,11 +425,11 @@ class TestNotificationPerformance:
         import concurrent.futures
 
         mock_notifications = [
-            {"id": i, "user_id": 1, "message": f"Notification {i}", "is_read": False}
+            {"id": i, "user_id": 1, "title": f"Notification {i}", "is_read": False}
             for i in range(10)
         ]
 
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = mock_notifications
 
             def get_notifications():
@@ -454,15 +454,15 @@ class TestNotificationPerformance:
             {
                 "id": i,
                 "user_id": 1,
-                "type": "new_comment",
-                "message": f"Notification {i}",
+                "type": "comment",
+                "title": f"Notification {i}",
                 "is_read": i % 2 == 0,
                 "created_at": f"2025-10-{(i % 30) + 1:02d}T10:00:00"
             }
             for i in range(1000)
         ]
 
-        with patch('services.notification_service.NotificationService.get_user_notifications') as mock_get:
+        with patch('api.notifications.NotificationService.get_user_notifications') as mock_get:
             mock_get.return_value = large_notification_list
 
             response = test_client.get("/notifications", headers=auth_headers_user)
