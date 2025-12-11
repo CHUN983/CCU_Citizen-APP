@@ -59,4 +59,22 @@ import PWAInstallPrompt from './components/PWAInstallPrompt.vue'
   justify-content: center;
   color: #666;
 }
+
+/* 移動端響應式樣式 */
+@media (max-width: 768px) {
+  .el-header {
+    padding: 0 10px;
+  }
+
+  .el-main {
+    padding: 10px;
+  }
+}
+
+/* 針對小螢幕（手機）的額外優化 */
+@media (max-width: 480px) {
+  .el-main {
+    padding: 8px;
+  }
+}
 </style>

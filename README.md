@@ -64,6 +64,9 @@ pip install -r requirements.txt
 # 3. 啟動 FastAPI 服務
 $env:PYTHONPATH="src/main/python"
 python -m uvicorn src.main.python.core.app:app --reload --host 0.0.0.0 --port 8000
+#由於新增了https的通道，目的讓手機也能連到FastAPI 服務，因此使用以下語法，如果沒用wsl的話，使用上面的方法。
+python -m uvicorn src.main.python.core.app:app --host 0.0.0.0 --port 8000  --ssl-keyfile localhost-key.pem --ssl-certfile localhost.pem
+
 ```
 
 **後端服務地址：**

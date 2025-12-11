@@ -1,7 +1,17 @@
 import axios from 'axios'
+import { Capacitor } from '@capacitor/core'
+
+// 在移動應用中使用 WSL2 IP，在網頁中使用相對路徑
+const getBaseURL = () => {
+  if (Capacitor.isNativePlatform()) {
+    // Android 模擬器訪問 WSL2 上的後端或是python api開啟的port
+    return 'https://10.0.2.2:8000'
+  }
+  return '/api'
+}
 
 const instance = axios.create({
-  baseURL: '/api',
+  baseURL: getBaseURL(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
