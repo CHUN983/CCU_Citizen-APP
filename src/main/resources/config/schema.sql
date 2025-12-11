@@ -1,4 +1,4 @@
-﻿-- Citizen Urban Planning Participation System - Database Schema
+-- Citizen Urban Planning Participation System - Database Schema
 -- MVP Version 1.0
 
 -- Users table (市民、行政人員、管理員)

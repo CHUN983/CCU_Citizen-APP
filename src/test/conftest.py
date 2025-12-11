@@ -52,55 +52,30 @@ def test_db_connection_pool():
     作用域: session - 整個測試會話只建立一次
     """
     from utils.database import set_test_connection_pool
+    import subprocess
 
-    # 首先連接到 MySQL server (不指定資料庫) 以建立測試資料庫
+    # 使用 subprocess 執行 MySQL 命令來確保穩定性
     try:
-        conn = mysql.connector.connect(
-            host=TEST_DB_CONFIG["host"],
-            port=TEST_DB_CONFIG["port"],
-            user=TEST_DB_CONFIG["user"],
-            password=TEST_DB_CONFIG["password"]
-        )
-        cursor = conn.cursor()
-
         # 建立測試資料庫
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {TEST_DB_CONFIG['database']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-        conn.commit()
-        cursor.close()
-        conn.close()
+        subprocess.run([
+            "mysql", "-u", TEST_DB_CONFIG["user"],
+            f"-p{TEST_DB_CONFIG['password']}",
+            "-e", f"CREATE DATABASE IF NOT EXISTS {TEST_DB_CONFIG['database']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+        ], check=True, capture_output=True, text=True)
 
-        # 重新連接到測試資料庫
-        conn = mysql.connector.connect(
-            host=TEST_DB_CONFIG["host"],
-            port=TEST_DB_CONFIG["port"],
-            user=TEST_DB_CONFIG["user"],
-            password=TEST_DB_CONFIG["password"],
-            database=TEST_DB_CONFIG["database"]  # 直接連接到測試資料庫
-        )
-        cursor = conn.cursor()
-
-        # 讀取並執行 schema
+        # 應用 schema (使用 subprocess 更可靠)
         schema_file = project_root / "src/main/resources/config/schema.sql"
-        with open(schema_file, 'r', encoding='utf-8') as f:
-            schema_sql = f.read()
+        with open(schema_file, 'rb') as f:
+            subprocess.run([
+                "mysql", "-u", TEST_DB_CONFIG["user"],
+                f"-p{TEST_DB_CONFIG['password']}",
+                TEST_DB_CONFIG["database"]
+            ], stdin=f, check=True, capture_output=True, text=True)
 
-        # 分割並執行每個 SQL 語句
-        statements = [s.strip() for s in schema_sql.split(';') if s.strip()]
-        for statement in statements:
-            if statement and not statement.startswith('--'):
-                try:
-                    cursor.execute(statement)
-                except mysql.connector.Error as e:
-                    # 忽略 "already exists" 和 "Duplicate entry" 錯誤
-                    if "already exists" not in str(e) and "Duplicate entry" not in str(e):
-                        print(f"Warning executing statement: {e}")
+        print(f"✅ Test database '{TEST_DB_CONFIG['database']}' initialized successfully")
 
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-    except mysql.connector.Error as e:
-        print(f"Error setting up test database: {e}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error setting up test database: {e.stderr}")
         raise
 
     # 建立連接池
@@ -119,21 +94,9 @@ def test_db_connection_pool():
     # 恢復為 production 連接池
     set_test_connection_pool(None)
 
-    # 清理: 刪除測試資料庫
-    try:
-        conn = mysql.connector.connect(
-            host=TEST_DB_CONFIG["host"],
-            port=TEST_DB_CONFIG["port"],
-            user=TEST_DB_CONFIG["user"],
-            password=TEST_DB_CONFIG["password"]
-        )
-        cursor = conn.cursor()
-        cursor.execute(f"DROP DATABASE IF EXISTS {TEST_DB_CONFIG['database']}")
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except mysql.connector.Error as e:
-        print(f"Error cleaning up test database: {e}")
+    # 注意: 不再自動刪除測試資料庫，保留以便調試
+    # 如需清理，手動執行: DROP DATABASE citizen_app_test;
+    print(f"ℹ️  Test database '{TEST_DB_CONFIG['database']}' preserved for debugging")
 
 
 @pytest.fixture(scope="function", autouse=True)
