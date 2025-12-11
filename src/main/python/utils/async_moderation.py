@@ -5,8 +5,8 @@ Async Moderation Tasks
 
 import asyncio
 from typing import Optional, List
-from ..services.ai_content_moderation_service import AIContentModerationService, ModerationDecision
-from ..services.ai_media_moderation_service import AIMediaModerationService
+from services.ai_content_moderation_service import AIContentModerationService, ModerationDecision
+from services.ai_media_moderation_service import AIMediaModerationService
 
 
 async def process_opinion_moderation(

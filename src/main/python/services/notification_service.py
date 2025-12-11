@@ -3,8 +3,8 @@ Notification service
 """
 
 from typing import List, Optional
-from ..models.notification import Notification, NotificationCreate
-from ..utils.database import get_db_cursor
+from models.notification import Notification, NotificationCreate
+from utils.database import get_db_cursor
 
 
 class NotificationService:
@@ -121,7 +121,7 @@ class MilestoneNotificationService:
         Returns:
             True if notification was sent, False otherwise
         """
-        from ..utils.database import get_db_cursor
+        from utils.database import get_db_cursor
 
         try:
             with get_db_cursor() as cursor:

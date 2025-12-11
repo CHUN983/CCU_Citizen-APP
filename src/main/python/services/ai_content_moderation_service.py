@@ -8,8 +8,8 @@ import json
 import time
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
-from ..utils.database import get_db_cursor
-from ..services.moderation_service import ModerationService
+from utils.database import get_db_cursor
+from services.moderation_service import ModerationService
 from dotenv import load_dotenv
 
 # Load environment variables from .env file

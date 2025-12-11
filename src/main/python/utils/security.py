@@ -130,8 +130,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     Get current authenticated user from JWT token
     Required for all protected endpoints
     """
-    from ..models.user import User
-    from ..utils.database import get_db_connection
+    from models.user import User
+    from utils.database import get_db_connection
 
     token = credentials.credentials
     user_data = get_user_from_token(token)
