@@ -29,9 +29,9 @@
               <el-select v-model="filters.category_id" placeholder="選擇分類" clearable @change="handleSearch">
                 <el-option
                   v-for="category in categories"
-                  :key="category.category_id"
+                  :key="category.id"
                   :label="category.name"
-                  :value="category.category_id"
+                  :value="category.id"
                 />
               </el-select>
             </el-form-item>
