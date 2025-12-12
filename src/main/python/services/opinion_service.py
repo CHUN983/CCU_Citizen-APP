@@ -158,8 +158,9 @@ class OpinionService:
     def get_opinions(page: int = 1, page_size: int = 20,
                     status: Optional[OpinionStatus] = None,
                     category_id: Optional[int] = None,
-                    sort_by: Optional[str] = None) -> OpinionList:
-        """Get paginated list of opinions"""
+                    sort_by: Optional[str] = None,
+                    search: Optional[str] = None) -> OpinionList:
+        """Get paginated list of opinions with optional search"""
         offset = (page - 1) * page_size
 
         # Build query
@@ -173,6 +174,12 @@ class OpinionService:
         if category_id:
             where_clauses.append("o.category_id = %s")
             params.append(category_id)
+
+        if search:
+            # Search in title and content
+            where_clauses.append("(o.title LIKE %s OR o.content LIKE %s)")
+            search_pattern = f"%{search}%"
+            params.extend([search_pattern, search_pattern])
 
         where_sql = " AND ".join(where_clauses)
 

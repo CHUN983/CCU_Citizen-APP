@@ -65,10 +65,11 @@ async def get_opinions(
     page_size: int = Query(20, ge=1, le=100),
     status: Optional[OpinionStatus] = None,
     category_id: Optional[int] = None,
-    sort_by: Optional[str] = None
+    sort_by: Optional[str] = None,
+    search: Optional[str] = None
 ):
-    """Get paginated list of opinions"""
-    return OpinionService.get_opinions(page, page_size, status, category_id, sort_by)
+    """Get paginated list of opinions with optional search"""
+    return OpinionService.get_opinions(page, page_size, status, category_id, sort_by, search)
 
 #固定路徑要放在參數路徑前面，否則會被當成參數處理
 @router.get("/collect", response_model=OpinionList)
