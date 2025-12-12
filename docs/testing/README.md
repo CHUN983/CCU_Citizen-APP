@@ -29,6 +29,14 @@
 - 測試環境與人員配置
 - 結論與建議
 
+### 🚀 **想了解前端測試與 CI/CD？** ⭐ **最新！**
+👉 [**前端測試與 CI/CD 指南 (FRONTEND_TESTING_CICD.md)**](FRONTEND_TESTING_CICD.md)
+- CI/CD Pipeline 架構詳解
+- Vitest 單元測試框架
+- Playwright E2E 測試指南
+- ESLint 程式碼品質工具
+- 實用指南與故障排查
+
 ---
 
 ## 📚 完整文檔清單
@@ -38,6 +46,7 @@
 | 🎯 [TESTING_DASHBOARD.md](TESTING_DASHBOARD.md) | 測試儀表板 - 快速進度導覽 | 15 KB | ✅ 最新 |
 | 📊 [TEST_EXECUTION_REPORT.md](TEST_EXECUTION_REPORT.md) | 測試執行報告 - 詳細結果分析 | 21 KB | ✅ 最新 |
 | 📘 [COMPREHENSIVE_TEST_REPORT.md](COMPREHENSIVE_TEST_REPORT.md) | 綜合測試報告 - 完整測試規格 | 90 KB | ✅ 最新 |
+| 🚀 [FRONTEND_TESTING_CICD.md](FRONTEND_TESTING_CICD.md) | 前端測試與 CI/CD 指南 | 85 KB | ⭐ **最新** |
 | 📖 [../../src/test/README.md](../../src/test/README.md) | 測試框架使用說明 | 20 KB | ✅ 最新 |
 | 📑 [TEST_PLAN.md](TEST_PLAN.md) | 測試計畫 - 策略與目標 | 15 KB | ✅ 最新 |
 | 📝 [TEST_CASES.md](TEST_CASES.md) | 測試案例 - 詳細案例列表 | 80 KB | ✅ 最新 |
@@ -80,6 +89,15 @@
 - 測試執行命令
 - Fixtures 使用說明
 - 常見問題排除
+
+#### 🚀 **前端測試與 CI/CD** ⭐ 新增
+→ 查看 [前端測試與 CI/CD 指南](FRONTEND_TESTING_CICD.md)
+- CI/CD Pipeline 架構
+- Vitest 單元測試使用
+- Playwright E2E 測試
+- ESLint 程式碼品質
+- 測試編寫最佳實踐
+- 故障排查指南
 
 #### 📋 **了解測試計畫**
 → 查看 [測試計畫](TEST_PLAN.md)
@@ -149,6 +167,7 @@ allure serve allure-results
 
 | 日期 | 更新內容 | 文檔 |
 |------|---------|------|
+| 2025-12-12 | 新增前端測試與 CI/CD 指南 ⭐ | FRONTEND_TESTING_CICD.md |
 | 2025-12-12 | 新增測試儀表板 | TESTING_DASHBOARD.md |
 | 2025-12-12 | 新增測試執行報告 | TEST_EXECUTION_REPORT.md |
 | 2025-10-24 | 新增綜合測試報告 | COMPREHENSIVE_TEST_REPORT.md |
