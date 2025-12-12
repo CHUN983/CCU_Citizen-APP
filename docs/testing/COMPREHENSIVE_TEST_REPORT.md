@@ -358,20 +358,41 @@ jobs:
 | UT-SVC-014 | 批次通知發送 | `NotificationService` | 多個通知正確發送 | P2 |
 | UT-SVC-015 | 通知已讀標記 | `NotificationService` | 已讀狀態更新、時間記錄 | P2 |
 
-##### **E. 邊界值與異常測試類別 (Boundary & Exception Testing)**
+##### **E. 資料驗證測試類別 (Data Validation Testing)**
 
 | 編號 | 測試案例名稱 | 測試場景 | 驗證項目 | 優先級 |
 |------|------------|---------|---------|--------|
-| UT-BND-001 | Token 剛好過期 | 過期時間邊界 | 正確識別為已過期 | P0 |
-| UT-BND-002 | Token 未過期（1 秒差） | 過期時間邊界 | 正確識別為未過期 | P0 |
-| UT-BND-003 | 空字串輸入 | 各種函數 | 正確處理或拋出異常 | P1 |
-| UT-BND-004 | None 值輸入 | 各種函數 | 正確處理或拋出異常 | P1 |
-| UT-BND-005 | 最大整數值 | 數值計算 | 不溢位、正確處理 | P2 |
-| UT-BND-006 | 負數輸入 | 數值計算 | 正確拒絕或轉換 | P1 |
-| UT-BND-007 | 超長字串（10,000 字元） | 字串處理 | 正確處理或截斷 | P1 |
-| UT-BND-008 | Unicode 特殊字元 | 字串處理 | Emoji、中文等正確處理 | P2 |
+| UT-VAL-001 | Token 剛好過期 | 過期時間邊界 | 正確識別為已過期 | P0 |
+| UT-VAL-002 | Token 未過期（1 秒差） | 過期時間邊界 | 正確識別為未過期 | P0 |
+| UT-VAL-003 | 空字串輸入 | 各種函數 | 正確處理或拋出異常 | P1 |
+| UT-VAL-004 | None 值輸入 | 各種函數 | 正確處理或拋出異常 | P1 |
+| UT-VAL-005 | 最大整數值 | 數值計算 | 不溢位、正確處理 | P2 |
+| UT-VAL-006 | 負數輸入 | 數值計算 | 正確拒絕或轉換 | P1 |
+| UT-VAL-007 | 超長字串（10,000 字元） | 字串處理 | 正確處理或截斷 | P1 |
+| UT-VAL-008 | Unicode 特殊字元 | 字串處理 | Emoji、中文等正確處理 | P2 |
 
-##### **F. 參數化測試類別 (Parameterized Testing)**
+##### **F. 狀態機測試類別 (State Machine Testing)**
+
+| 編號 | 測試案例名稱 | 測試目標 | 驗證項目 | 優先級 |
+|------|------------|---------|---------|--------|
+| UT-STM-001 | 意見狀態：待審核→已通過 | `OpinionStateMachine` | 狀態正確轉換、時間戳記錄 | P0 |
+| UT-STM-002 | 意見狀態：待審核→已拒絕 | `OpinionStateMachine` | 狀態正確轉換、拒絕原因記錄 | P0 |
+| UT-STM-003 | 意見狀態：已通過→已封存 | `OpinionStateMachine` | 狀態正確轉換、封存時間記錄 | P1 |
+| UT-STM-004 | 無效狀態轉換（已拒絕→已通過） | `OpinionStateMachine` | 拋出 InvalidTransitionError | P0 |
+| UT-STM-005 | 無效狀態轉換（已封存→待審核） | `OpinionStateMachine` | 拋出 InvalidTransitionError | P1 |
+| UT-STM-006 | 獲取允許的下一狀態 | `OpinionStateMachine` | 返回正確的可轉換狀態列表 | P1 |
+
+##### **G. Mock/Stub 測試類別 (Mock & Stub Testing)**
+
+| 編號 | 測試案例名稱 | 測試目標 | 驗證項目 | 優先級 |
+|------|------------|---------|---------|--------|
+| UT-MCK-001 | Mock 郵件發送服務 | `EmailService` | Mock 被正確呼叫、不實際發送郵件 | P0 |
+| UT-MCK-002 | Mock 外部通知 API | `NotificationService` | API 呼叫被 Mock、返回模擬回應 | P0 |
+| UT-MCK-003 | Stub 資料庫查詢 | `OpinionRepository` | 返回預定義測試資料、不查詢真實 DB | P1 |
+| UT-MCK-004 | Mock 檔案上傳服務 | `MediaService` | 模擬上傳成功、返回假 URL | P1 |
+| UT-MCK-005 | Stub 時間函數 | `datetime.now()` | 固定時間點、測試時間相關邏輯 | P1 |
+
+##### **H. 參數化測試類別 (Parameterized Testing)**
 
 | 編號 | 測試案例名稱 | 測試參數組數 | 測試函數 | 覆蓋場景 |
 |------|------------|------------|---------|---------|
@@ -380,6 +401,13 @@ jobs:
 | UT-PAR-003 | URL 驗證 | 8 組 | `is_valid_url()` | HTTP/HTTPS/無效 URL |
 | UT-PAR-004 | 分類驗證 | 12 組 | `validate_category()` | 所有有效與無效分類 |
 | UT-PAR-005 | 日期格式 | 5 組 | `parse_date()` | ISO 8601、Unix timestamp 等 |
+| UT-PAR-006 | 狀態轉換驗證 | 15 組 | `can_transition()` | 所有有效/無效狀態轉換 |
+| UT-PAR-007 | 權限檢查 | 10 組 | `check_permission()` | 各種角色與資源組合 |
+| UT-PAR-008 | 分頁參數 | 8 組 | `paginate()` | 邊界值、負數、超大值 |
+| UT-PAR-009 | 搜尋關鍵字過濾 | 6 組 | `search_filter()` | 特殊字元、空白、超長字串 |
+| UT-PAR-010 | 檔案類型驗證 | 10 組 | `validate_file_type()` | 允許/禁止的 MIME types |
+| UT-PAR-011 | 數值範圍驗證 | 9 組 | `validate_range()` | 最小值、最大值、邊界 |
+| UT-PAR-012 | HTTP 狀態碼處理 | 12 組 | `handle_response()` | 2xx/3xx/4xx/5xx 回應 |
 
 #### **測試覆蓋率統計**
 
