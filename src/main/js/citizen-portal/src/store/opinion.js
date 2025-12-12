@@ -14,7 +14,11 @@ export const useOpinionStore = defineStore('opinion', {
 
     bookmarkedOpinions: [],
     bookmarkedTotal: 0,
-    bookmarkedLoading: false
+    bookmarkedLoading: false,
+
+    myOpinions: [],
+    myOpinionsTotal: 0,
+    myOpinionsLoading: false
   }),
 
   actions: {
@@ -74,6 +78,27 @@ export const useOpinionStore = defineStore('opinion', {
         throw error
       } finally {
         this.bookmarkedLoading = false
+      }
+    },
+
+    async fetchMyOpinions(page = 1, pageSize = 10, status = null) {
+      this.myOpinionsLoading = true
+      try {
+        const params = {
+          page,
+          page_size: pageSize
+        }
+        if (status) {
+          params.status = status
+        }
+        const data = await opinionAPI.getMyOpinions(params)
+        this.myOpinions = data.items || []
+        this.myOpinionsTotal = data.total || 0
+        return data
+      } catch (error) {
+        throw error
+      } finally {
+        this.myOpinionsLoading = false
       }
     },
 

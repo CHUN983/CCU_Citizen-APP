@@ -18,7 +18,8 @@ export const opinionAPI = {
   bookmark: (id) => axios.post(`/opinions/${id}/collect`),
   getBookmarkStatus: (id) => axios.get(`/opinions/${id}/collect`),
   getBookmarked: (params) => axios.get('/opinions/collect', { params }),
-  unbookmark: (id) => axios.delete(`/opinions/${id}/collect`)
+  unbookmark: (id) => axios.delete(`/opinions/${id}/collect`),
+  getMyOpinions: (params) => axios.get('/opinions/my-opinions', { params })
 }
 
 // Comment APIs

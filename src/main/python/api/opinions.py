@@ -84,6 +84,21 @@ async def get_bookmarked_opinions(
         page_size=page_size
     )
 
+@router.get("/my-opinions", response_model=OpinionList)
+async def get_my_opinions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    status: Optional[OpinionStatus] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get paginated list of opinions created by current user"""
+    return OpinionService.get_user_opinions(
+        user_id=current_user["user_id"],
+        page=page,
+        page_size=page_size,
+        status=status
+    )
+
 @router.get("/{opinion_id}", response_model=OpinionWithUser)
 async def get_opinion(opinion_id: int):
     """Get opinion by ID"""

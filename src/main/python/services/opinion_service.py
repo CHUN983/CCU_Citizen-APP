@@ -444,6 +444,106 @@ class OpinionService:
                 items=items
             )
 
+    @staticmethod
+    def get_user_opinions(
+        user_id: int,
+        page: int = 1,
+        page_size: int = 10,
+        status: Optional[OpinionStatus] = None
+    ) -> OpinionList:
+        """Get paginated list of opinions created by user"""
+        offset = (page - 1) * page_size
+
+        # Build where clause
+        where_clauses = ["o.user_id = %s"]
+        params = [user_id]
+
+        if status:
+            where_clauses.append("o.status = %s")
+            params.append(status.value)
+
+        where_sql = " AND ".join(where_clauses)
+
+        # 1) Count total
+        count_query = f"""
+            SELECT COUNT(*) AS total
+            FROM opinions o
+            WHERE {where_sql}
+        """
+
+        # 2) Get actual data
+        data_query = f"""
+            SELECT
+                o.*,
+                c.name as category_name,
+                u.username,
+                u.full_name AS user_full_name,
+                -- like count
+                (
+                    SELECT COUNT(*)
+                    FROM votes v
+                    WHERE v.opinion_id = o.id
+                      AND v.vote_type = %s
+                ) AS upvotes,
+                -- support count
+                (
+                    SELECT COUNT(*)
+                    FROM votes v
+                    WHERE v.opinion_id = o.id
+                      AND v.vote_type = %s
+                ) AS downvotes,
+                -- comment count
+                (
+                    SELECT COUNT(*)
+                    FROM comments cmt
+                    WHERE cmt.opinion_id = o.id
+                      AND cmt.is_deleted = FALSE
+                ) AS comment_count
+            FROM opinions o
+            JOIN users u ON o.user_id = u.id
+            LEFT JOIN categories c ON o.category_id = c.id
+            WHERE {where_sql}
+            ORDER BY o.created_at DESC
+            LIMIT %s OFFSET %s
+        """
+
+        with get_db_cursor() as cursor:
+            # total
+            cursor.execute(count_query, params)
+            total = cursor.fetchone()['total']
+
+            # data
+            cursor.execute(
+                data_query,
+                [
+                    VoteType.LIKE.value,      # 'like'
+                    VoteType.DISLIKE.value,   # 'dislike'
+                ] + params + [page_size, offset]
+            )
+            rows = cursor.fetchall()
+
+            # Add tags for each opinion
+            for row in rows:
+                cursor.execute(
+                    """
+                    SELECT t.name
+                    FROM tags t
+                    JOIN opinion_tags ot ON t.id = ot.tag_id
+                    WHERE ot.opinion_id = %s
+                    """,
+                    (row['id'],)
+                )
+                row['tags'] = [r['name'] for r in cursor.fetchall()]
+
+            items = [OpinionWithUser(**row) for row in rows]
+
+            return OpinionList(
+                total=total,
+                page=page,
+                page_size=page_size,
+                items=items
+            )
+
 
     @staticmethod
     def _add_tags(cursor, opinion_id: int, tag_names: List[str]):
