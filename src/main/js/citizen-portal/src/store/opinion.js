@@ -44,15 +44,21 @@ export const useOpinionStore = defineStore('opinion', {
             ? opinionAPI.getBookmarkStatus(id)
             : Promise.resolve({ is_collected: false })
 
-          const [ opinionData, collectStatus ] = await Promise.all([
+          const votePromise = userStore.isLoggedIn
+            ? opinionAPI.getVoteStatus(id)
+            : Promise.resolve({ vote_type: null })
+
+          const [ opinionData, collectStatus, voteStatus ] = await Promise.all([
             opinionAPI.getById(id),
-            bookmarkPromise
+            bookmarkPromise,
+            votePromise
           ])
 
-          // 把 like/support 數量合併進 currentOpinion
+          // 把 like/support 數量和用戶投票狀態合併進 currentOpinion
           this.currentOpinion = {
             ...opinionData,
-            is_bookmarked: collectStatus.is_collected ?? false
+            is_bookmarked: collectStatus.is_collected ?? false,
+            user_vote: voteStatus.vote_type // 'like', 'support', or null
           }
 
           return this.currentOpinion

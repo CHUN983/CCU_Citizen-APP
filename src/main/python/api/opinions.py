@@ -187,6 +187,20 @@ async def collect_opinion(
 
     return {"message": "Opinion collected successfully"}
 
+@router.get("/{opinion_id}/vote")
+async def get_vote_status(
+    opinion_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get current user's vote status for this opinion"""
+    # 確認意見存在
+    opinion = OpinionService.get_opinion_by_id(opinion_id)
+    if not opinion:
+        raise HTTPException(status_code=404, detail="Opinion not found")
+
+    vote_type = OpinionService.get_user_vote(opinion_id, current_user["user_id"])
+    return {"vote_type": vote_type}
+
 @router.get("/{opinion_id}/collect")
 async def get_collect_status(
     opinion_id: int,

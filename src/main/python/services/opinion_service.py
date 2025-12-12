@@ -299,22 +299,64 @@ class OpinionService:
     
     @staticmethod
     def vote_opinion(opinion_id: int, user_id: int, vote_data: VoteCreate) -> bool:
-        """Vote on an opinion"""
-        query = """
-            INSERT INTO votes (opinion_id, user_id, vote_type)
-            VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE vote_type = VALUES(vote_type)
-        """
-
+        """Vote on an opinion - supports toggle (cancel vote if clicking same type)"""
         try:
             with get_db_cursor() as cursor:
-                cursor.execute(query, (opinion_id, user_id, vote_data.vote_type.value))
-                return True
+                # Check if user has already voted
+                check_query = """
+                    SELECT vote_type FROM votes
+                    WHERE opinion_id = %s AND user_id = %s
+                """
+                cursor.execute(check_query, (opinion_id, user_id))
+                existing_vote = cursor.fetchone()
+
+                if existing_vote:
+                    # If clicking the same vote type, remove the vote (toggle off)
+                    if existing_vote['vote_type'] == vote_data.vote_type.value:
+                        delete_query = """
+                            DELETE FROM votes
+                            WHERE opinion_id = %s AND user_id = %s
+                        """
+                        cursor.execute(delete_query, (opinion_id, user_id))
+                        return True
+                    else:
+                        # Update to new vote type
+                        update_query = """
+                            UPDATE votes
+                            SET vote_type = %s
+                            WHERE opinion_id = %s AND user_id = %s
+                        """
+                        cursor.execute(update_query, (vote_data.vote_type.value, opinion_id, user_id))
+                        return True
+                else:
+                    # Insert new vote
+                    insert_query = """
+                        INSERT INTO votes (opinion_id, user_id, vote_type)
+                        VALUES (%s, %s, %s)
+                    """
+                    cursor.execute(insert_query, (opinion_id, user_id, vote_data.vote_type.value))
+                    return True
         except Exception as e:
             print(f"Error voting: {e}")
             return False
 
-    
+    @staticmethod
+    def get_user_vote(opinion_id: int, user_id: int) -> Optional[str]:
+        """Get user's vote type for an opinion (returns 'like', 'support', or None)"""
+        query = """
+            SELECT vote_type FROM votes
+            WHERE opinion_id = %s AND user_id = %s
+        """
+        try:
+            with get_db_cursor() as cursor:
+                cursor.execute(query, (opinion_id, user_id))
+                result = cursor.fetchone()
+                return result['vote_type'] if result else None
+        except Exception as e:
+            print(f"Error getting user vote: {e}")
+            return None
+
+
     @staticmethod
     def collect_opinion(opinion_id: int, user_id: int) -> bool:
         """Add opinion to user's collection"""
