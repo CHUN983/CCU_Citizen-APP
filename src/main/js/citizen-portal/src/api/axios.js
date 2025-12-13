@@ -7,7 +7,7 @@ const getBaseURL = () => {
     // Android 模擬器訪問 WSL2 上的後端或是python api開啟的port
     return 'https://10.0.2.2:8000'
   }
-  return '/api'
+  return 'http://140.123.105.199:8080/'
 }
 
 const instance = axios.create({
