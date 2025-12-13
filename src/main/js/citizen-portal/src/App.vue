@@ -64,10 +64,12 @@ import PWAInstallPrompt from './components/PWAInstallPrompt.vue'
 @media (max-width: 768px) {
   .el-header {
     padding: 0 10px;
+    height: 100px !important; /* 手機版需要更高的 Header 容納兩行 */
   }
 
   .el-main {
     padding: 10px;
+    min-height: calc(100vh - 160px); /* 調整主區域高度 (100px header + 60px footer) */
   }
 }
 

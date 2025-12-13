@@ -236,7 +236,8 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .header-container {
     flex-wrap: wrap;
-    padding: 8px 12px;
+    padding: 4px 8px;
+    align-items: flex-start;
   }
 
   .logo {
@@ -252,36 +253,43 @@ onUnmounted(() => {
     font-size: 14px;
   }
 
-  /* 導航選單移到下一行 */
+  /* 導航選單移到下一行，佔滿整行 */
   .nav-menu {
     order: 3;
     width: 100%;
-    margin: 8px 0 0 0;
+    margin: 4px 0 0 0;
+  }
+
+  .nav-menu :deep(.el-menu) {
+    justify-content: flex-start;
   }
 
   .nav-menu :deep(.el-menu-item) {
-    padding: 0 12px !important;
+    padding: 0 10px !important;
     font-size: 13px;
+    height: 40px;
+    line-height: 40px;
   }
 
   /* 使用者區域保持在右上角 */
   .user-section {
-    gap: 8px;
+    gap: 6px;
     margin-left: auto;
   }
 
   .user-section :deep(.el-button) {
-    font-size: 13px;
-    padding: 6px 12px;
+    font-size: 12px;
+    padding: 5px 10px;
+    height: 28px;
   }
 
   .user-info {
-    padding: 0 6px;
-    font-size: 13px;
+    padding: 0 4px;
+    font-size: 12px;
   }
 
   .user-info span {
-    max-width: 60px;
+    max-width: 50px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -289,6 +297,12 @@ onUnmounted(() => {
 
   .notification-badge {
     margin-right: 0;
+  }
+
+  .notification-button {
+    width: 32px;
+    height: 32px;
+    padding: 0;
   }
 
   .notification-dropdown {
