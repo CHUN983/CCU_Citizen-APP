@@ -86,7 +86,7 @@ case $choice in
             # 顯示新創建的表
             echo ""
             echo -e "${YELLOW}📊 新增的資料表:${NC}"
-            $MYSQL_CMD $DB_NAME -e "SHOW TABLES LIKE '%moderation%' OR SHOW TABLES LIKE '%sensitive%' OR SHOW TABLES LIKE '%category_keywords%';"
+            $MYSQL_CMD $DB_NAME -e "SELECT table_name FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND (table_name LIKE '%moderation%' OR table_name LIKE '%sensitive%' OR table_name LIKE '%category_keywords%');"
         fi
         ;;
     3)
