@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     host: true,          // 或寫 0.0.0.0
     port: 5190,
+    https: false,
     strictPort: true,
     // hmr: {
     //   host: 'localhost', // 讓瀏覽器用 localhost 與 dev server 建立 WebSocket

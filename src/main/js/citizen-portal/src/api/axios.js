@@ -5,7 +5,7 @@ import { Capacitor } from '@capacitor/core'
 const getBaseURL = () => {
   if (Capacitor.isNativePlatform()) {
     // Android 模擬器訪問 WSL2 上的後端或是python api開啟的port
-    return 'https://10.0.2.2:8000'
+    return 'http://140.123.105.199:8080/'
   }
   return 'http://140.123.105.199:8080/'
 }
@@ -49,4 +49,5 @@ instance.interceptors.response.use(
   }
 )
 
+console.log('Axios baseURL:', instance.defaults.baseURL)
 export default instance
