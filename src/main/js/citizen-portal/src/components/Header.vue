@@ -205,6 +205,7 @@ onUnmounted(() => {
   cursor: pointer;
   font-size: 20px;
   font-weight: bold;
+  flex-shrink: 0;
 }
 
 .title {
@@ -228,6 +229,72 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 15px;
+  flex-shrink: 0;
+}
+
+/* 手機版響應式設計 */
+@media (max-width: 768px) {
+  .header-container {
+    flex-wrap: wrap;
+    padding: 8px 12px;
+  }
+
+  .logo {
+    font-size: 16px;
+    gap: 6px;
+  }
+
+  .logo .el-icon {
+    font-size: 20px !important;
+  }
+
+  .title {
+    font-size: 14px;
+  }
+
+  /* 導航選單移到下一行 */
+  .nav-menu {
+    order: 3;
+    width: 100%;
+    margin: 8px 0 0 0;
+  }
+
+  .nav-menu :deep(.el-menu-item) {
+    padding: 0 12px !important;
+    font-size: 13px;
+  }
+
+  /* 使用者區域保持在右上角 */
+  .user-section {
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .user-section :deep(.el-button) {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  .user-info {
+    padding: 0 6px;
+    font-size: 13px;
+  }
+
+  .user-info span {
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .notification-badge {
+    margin-right: 0;
+  }
+
+  .notification-dropdown {
+    min-width: 90vw;
+    max-width: 90vw;
+  }
 }
 
 .notification-badge {
