@@ -82,3 +82,11 @@ dist/
 # Configuration (uncomment if sensitive)
 .env
 # config/secrets.*
+
+# SSL/TLS Certificates (NEVER commit!)
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+selfsigned.*

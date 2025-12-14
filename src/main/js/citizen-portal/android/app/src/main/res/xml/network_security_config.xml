@@ -32,6 +32,8 @@
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">localhost</domain>
         <trust-anchors>
+            <!-- 信任應用程式內建的伺服器證書 -->
+            <certificates src="@raw/server_cert" />
             <certificates src="system" />
             <certificates src="user" />
         </trust-anchors>
