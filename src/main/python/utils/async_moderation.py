@@ -56,6 +56,7 @@ async def process_opinion_moderation(
                 auto_moderation_status='rejected',
                 auto_moderation_score=text_result['confidence'],
                 auto_category_id=text_result['suggested_category_id'],
+                category_confidence=text_result['category_confidence'],
                 moderation_reason=text_result['reason'],
                 needs_manual_review=False
             )
@@ -80,6 +81,7 @@ async def process_opinion_moderation(
                     auto_moderation_status='rejected',
                     auto_moderation_score=media_result['overall_confidence'],
                     auto_category_id=text_result['suggested_category_id'],
+                    category_confidence=text_result['category_confidence'],
                     moderation_reason=f"多媒體內容不當: {media_result['reason']}",
                     needs_manual_review=False
                 )
@@ -130,6 +132,7 @@ async def process_opinion_moderation(
                 auto_moderation_status='reviewing',
                 auto_moderation_score=0.0,
                 auto_category_id=current_category_id,
+                category_confidence=None,
                 moderation_reason=f"自動審核錯誤: {str(e)}",
                 needs_manual_review=True
             )
