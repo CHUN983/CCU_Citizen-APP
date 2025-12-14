@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain>140.123.105.199</domain>
+    <!-- 開發環境：信任所有證書（包含自簽名） -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- 信任系統預設的 CA -->
+            <certificates src="system" />
+            <!-- 信任使用者安裝的證書（包含自簽名） -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- 針對開發伺服器的特殊配置 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">140.123.105.199</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
     </domain-config>
 </network-security-config>
