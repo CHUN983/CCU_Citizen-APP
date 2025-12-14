@@ -61,12 +61,19 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: 📦 Setup Node.js
+      - name: 📦 Setup Node.js (with cache)
+        if: ${{ hashFiles('src/main/js/admin-dashboard/package-lock.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: src/main/js/admin-dashboard/package-lock.json
+
+      - name: 📦 Setup Node.js (no cache)
+        if: ${{ hashFiles('src/main/js/admin-dashboard/package-lock.json') == '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: 📦 Install dependencies
         run: |
@@ -116,12 +123,19 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: 📦 Setup Node.js
+      - name: 📦 Setup Node.js (with cache)
+        if: ${{ hashFiles('src/main/js/citizen-portal/package-lock.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: src/main/js/citizen-portal/package-lock.json
+
+      - name: 📦 Setup Node.js (no cache)
+        if: ${{ hashFiles('src/main/js/citizen-portal/package-lock.json') == '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: 📦 Install dependencies
         run: |
