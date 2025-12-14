@@ -143,9 +143,12 @@ class OpinionService:
             for m in media_rows:
                 filename = m["file_path"].split("/")[-1]
                 m["filename"] = filename
-                m["url"] = f"uploads/{m['media_type']}/{filename}"
+
+                # Return API endpoint URL instead of file path
+                # Frontend will use this URL to fetch media through API
+                m["url"] = f"/media/files/{m['media_type']}/{filename}"
                 if m["media_type"] == "image":
-                    m["thumbnail_url"] = f"uploads/thumbnails/{filename}"
+                    m["thumbnail_url"] = f"/media/thumbnails/{filename}"
                 else:
                     m["thumbnail_url"] = None
 
