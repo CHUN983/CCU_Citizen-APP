@@ -29,12 +29,17 @@ CITY="Chiayi"
 ORGANIZATION="CCU"
 COMMON_NAME="140.123.105.199"  # Server IP or domain
 
+# Subject Alternative Names (SAN) for multiple hostnames
+# Includes both production IP and emulator IP for development
+SAN="IP:140.123.105.199,IP:10.0.2.2,DNS:localhost"
+
 echo -e "${YELLOW}Configuration:${NC}"
 echo "  SSL Directory: $SSL_DIR"
 echo "  Certificate: $CERT_FILE"
 echo "  Private Key: $KEY_FILE"
 echo "  Valid for: $DAYS_VALID days"
 echo "  Common Name: $COMMON_NAME"
+echo "  Subject Alternative Names: $SAN"
 echo ""
 
 # Create SSL directory if not exists
@@ -60,16 +65,41 @@ if [ -f "$CERT_FILE" ] || [ -f "$KEY_FILE" ]; then
     rm -f "$CERT_FILE" "$KEY_FILE"
 fi
 
-# Generate self-signed certificate
+# Generate self-signed certificate with SAN
 echo ""
-echo -e "${YELLOW}Generating self-signed SSL certificate...${NC}"
+echo -e "${YELLOW}Generating self-signed SSL certificate with SAN...${NC}"
 echo ""
 
+# Create temporary OpenSSL config file with SAN
+TEMP_CONFIG=$(mktemp)
+cat > "$TEMP_CONFIG" <<EOF
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+distinguished_name = dn
+x509_extensions = v3_req
+
+[dn]
+C=$COUNTRY
+ST=$STATE
+L=$CITY
+O=$ORGANIZATION
+CN=$COMMON_NAME
+
+[v3_req]
+subjectAltName = $SAN
+EOF
+
+# Generate certificate using the config file
 openssl req -x509 -nodes -days $DAYS_VALID -newkey rsa:2048 \
     -keyout "$KEY_FILE" \
     -out "$CERT_FILE" \
-    -subj "/C=$COUNTRY/ST=$STATE/L=$CITY/O=$ORGANIZATION/CN=$COMMON_NAME" \
+    -config "$TEMP_CONFIG" \
     2>/dev/null
+
+# Clean up temporary config
+rm -f "$TEMP_CONFIG"
 
 # Set proper permissions
 chmod 600 "$KEY_FILE"
@@ -91,6 +121,9 @@ echo -e "${YELLOW}Certificate Details:${NC}"
 openssl x509 -in "$CERT_FILE" -noout -text | grep -A 2 "Validity"
 echo ""
 openssl x509 -in "$CERT_FILE" -noout -text | grep -A 1 "Subject:"
+echo ""
+echo -e "${YELLOW}Subject Alternative Names:${NC}"
+openssl x509 -in "$CERT_FILE" -noout -text | grep -A 1 "Subject Alternative Name"
 echo ""
 
 echo -e "${GREEN}Next Steps:${NC}"
