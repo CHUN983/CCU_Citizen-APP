@@ -52,8 +52,8 @@ echo ""
 
 # 互動式選擇
 echo -e "${YELLOW}選擇要執行的遷移:${NC}"
-echo "1) 完整初始化 (schema.sql)"
-echo "2) AI 自動審核系統 (add_ai_moderation_safe.sql)"
+echo "1) 完整初始化 (schema_complete.sql - 包含所有功能)"
+echo "2) AI 自動審核系統 (add_ai_moderation_safe.sql - 僅升級)"
 echo "3) 檢查遷移狀態 (check_migration_status.sql)"
 echo "4) 添加缺失欄位 (add_missing_columns.sql)"
 echo "5) 全部執行 (推薦用於新環境)"
@@ -64,9 +64,9 @@ read -p "請選擇 [0-5]: " choice
 
 case $choice in
     1)
-        echo -e "${YELLOW}🔧 執行完整初始化...${NC}"
-        $MYSQL_CMD $DB_NAME < $SQL_DIR/schema.sql
-        echo -e "${GREEN}✅ 完整初始化完成${NC}"
+        echo -e "${YELLOW}🔧 執行完整初始化（包含 AI 審核系統）...${NC}"
+        $MYSQL_CMD $DB_NAME < $SQL_DIR/schema_complete.sql
+        echo -e "${GREEN}✅ 完整初始化完成（包含所有功能）${NC}"
         ;;
     2)
         echo -e "${YELLOW}🤖 安裝 AI 自動審核系統...${NC}"
@@ -125,8 +125,8 @@ case $choice in
             TABLE_COUNT=$($MYSQL_CMD $DB_NAME -e "SHOW TABLES;" | wc -l)
 
             if [ $TABLE_COUNT -lt 5 ]; then
-                echo -e "${YELLOW}📋 執行基礎 schema...${NC}"
-                $MYSQL_CMD $DB_NAME < $SQL_DIR/schema.sql
+                echo -e "${YELLOW}📋 執行完整 schema（包含所有功能）...${NC}"
+                $MYSQL_CMD $DB_NAME < $SQL_DIR/schema_complete.sql
             else
                 echo -e "${GREEN}✅ 基礎 schema 已存在${NC}"
             fi

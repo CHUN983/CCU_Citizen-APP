@@ -42,10 +42,10 @@ sudo mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME:-citizen_app} CHARACTER S
 sudo mysql -e "FLUSH PRIVILEGES;"
 
 # 匯入資料表結構
-if [ -f "src/main/resources/config/schema.sql" ]; then
-    echo "📋 匯入資料表結構..."
-    mysql -u root -p${DB_PASSWORD:-e20040731} ${DB_NAME:-citizen_app} < src/main/resources/config/schema.sql
-    echo "✅ 資料表已建立"
+if [ -f "src/main/resources/config/schema_complete.sql" ]; then
+    echo "📋 匯入資料表結構（完整版）..."
+    mysql -u root -p${DB_PASSWORD:-e20040731} ${DB_NAME:-citizen_app} < src/main/resources/config/schema_complete.sql
+    echo "✅ 資料表已建立（包含 AI 審核系統）"
 fi
 
 echo ""
