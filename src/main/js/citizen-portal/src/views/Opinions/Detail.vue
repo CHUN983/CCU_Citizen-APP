@@ -95,7 +95,7 @@
         <!-- Voting Section -->
         <el-divider />
         <div class="voting-section">
-          <!-- 審核中的意見提示 -->
+          <!-- 審核中或已拒絕的意見提示 -->
           <el-alert
             v-if="opinion.status === 'pending'"
             type="warning"
@@ -104,9 +104,17 @@
           >
             此意見正在審核中，暫時無法進行投票、收藏或留言
           </el-alert>
+          <el-alert
+            v-else-if="opinion.status === 'rejected'"
+            type="error"
+            :closable="false"
+            show-icon
+          >
+            此意見已被拒絕，無法進行投票、收藏或留言
+          </el-alert>
 
           <!-- 已通過的意見可以互動 -->
-          <template v-else>
+          <template v-else-if="opinion.status === 'approved'">
             <div class="vote-buttons">
               <el-button
                 :type="opinion.user_vote === 'like' ? 'success' : 'default'"
@@ -163,7 +171,16 @@
             此意見正在審核中，暫時無法發表留言
           </el-alert>
         </div>
-        <div v-else-if="isLoggedIn" class="comment-input-section">
+        <div v-else-if="opinion && opinion.status === 'rejected'" class="comment-disabled-section">
+          <el-alert
+            type="error"
+            :closable="false"
+            show-icon
+          >
+            此意見已被拒絕，無法發表留言
+          </el-alert>
+        </div>
+        <div v-else-if="isLoggedIn && opinion && opinion.status === 'approved'" class="comment-input-section">
           <el-input
             v-model="newComment"
             type="textarea"
