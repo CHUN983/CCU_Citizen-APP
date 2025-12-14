@@ -168,6 +168,30 @@ export const useOpinionStore = defineStore('opinion', {
       } catch (error) {
         throw error
       }
+    },
+
+    async deleteOpinion(id) {
+      try {
+        const data = await opinionAPI.delete(id)
+
+        // Remove from myOpinions list
+        const index = this.myOpinions.findIndex(op => op.id === id)
+        if (index !== -1) {
+          this.myOpinions.splice(index, 1)
+          this.myOpinionsTotal -= 1
+        }
+
+        // Also remove from bookmarkedOpinions if present
+        const bookmarkIndex = this.bookmarkedOpinions.findIndex(op => op.id === id)
+        if (bookmarkIndex !== -1) {
+          this.bookmarkedOpinions.splice(bookmarkIndex, 1)
+          this.bookmarkedTotal -= 1
+        }
+
+        return data
+      } catch (error) {
+        throw error
+      }
     }
   }
 })

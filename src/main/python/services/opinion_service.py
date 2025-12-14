@@ -596,6 +596,25 @@ class OpinionService:
                 items=items
             )
 
+    @staticmethod
+    def delete_opinion(opinion_id: int, user_id: int) -> bool:
+        """
+        Delete an opinion (hard delete with CASCADE)
+        Only the opinion owner can delete their own opinion
+        Returns True if deleted, False if not found or unauthorized
+        """
+        query = """
+            DELETE FROM opinions
+            WHERE id = %s AND user_id = %s
+        """
+
+        try:
+            with get_db_cursor() as cursor:
+                cursor.execute(query, (opinion_id, user_id))
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting opinion: {e}")
+            return False
 
     @staticmethod
     def _add_tags(cursor, opinion_id: int, tag_names: List[str]):

@@ -228,3 +228,19 @@ async def uncollect_opinion(
         raise HTTPException(status_code=404, detail="Collection not found")
 
     return {"message": "Opinion removed from collection"}
+
+@router.delete("/{opinion_id}", status_code=200)
+async def delete_opinion(
+    opinion_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete user's own opinion"""
+    success = OpinionService.delete_opinion(opinion_id, current_user["user_id"])
+
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail="意見不存在或您無權刪除此意見"
+        )
+
+    return {"message": "意見已成功刪除"}

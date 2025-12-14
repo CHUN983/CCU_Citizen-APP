@@ -61,7 +61,18 @@
                   >
                     <div class="opinion-header">
                       <h3 class="opinion-title">{{ op.title }}</h3>
-                      <el-tag type="success" size="small">已通過</el-tag>
+                      <div class="opinion-header-actions">
+                        <el-tag type="success" size="small">已通過</el-tag>
+                        <el-button
+                          type="danger"
+                          size="small"
+                          text
+                          @click.stop="handleDeleteOpinion(op.id, op.title)"
+                        >
+                          <el-icon><Delete /></el-icon>
+                          刪除
+                        </el-button>
+                      </div>
                     </div>
                     <p class="opinion-content">{{ op.content }}</p>
                     <div class="opinion-meta">
@@ -112,7 +123,18 @@
                   >
                     <div class="opinion-header">
                       <h3 class="opinion-title">{{ op.title }}</h3>
-                      <el-tag type="warning" size="small">審核中</el-tag>
+                      <div class="opinion-header-actions">
+                        <el-tag type="warning" size="small">審核中</el-tag>
+                        <el-button
+                          type="danger"
+                          size="small"
+                          text
+                          @click.stop="handleDeleteOpinion(op.id, op.title)"
+                        >
+                          <el-icon><Delete /></el-icon>
+                          刪除
+                        </el-button>
+                      </div>
                     </div>
                     <p class="opinion-content">{{ op.content }}</p>
                     <div class="opinion-meta">
@@ -195,7 +217,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../../store/user'
 import { useOpinionStore } from '../../store/opinion'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const opinionStore = useOpinionStore()
@@ -249,6 +272,31 @@ const handleTabChange = (tabName) => {
 const handleMyOpinionsPageChange = (page) => {
   myOpinionsCurrentPage.value = page
   fetchMyOpinions()
+}
+
+const handleDeleteOpinion = async (opinionId, opinionTitle) => {
+  try {
+    await ElMessageBox.confirm(
+      `確定要刪除意見「${opinionTitle}」嗎？此操作無法復原，且會同時刪除所有相關的留言和投票。`,
+      '刪除意見',
+      {
+        confirmButtonText: '確定刪除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    await opinionStore.deleteOpinion(opinionId)
+    ElMessage.success('意見已成功刪除')
+
+    // Refresh opinion list
+    await fetchMyOpinions()
+
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.detail || '刪除意見失敗')
+    }
+  }
 }
 
 const fetchBookmarks = async () => {
@@ -375,6 +423,12 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 10px;
+}
+
+.opinion-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .opinion-title {
