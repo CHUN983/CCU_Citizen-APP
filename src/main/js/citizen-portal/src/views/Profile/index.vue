@@ -185,6 +185,23 @@
                 </p>
                 <div class="bookmark-meta">
                   <el-tag size="small">{{ op.category_name }}</el-tag>
+
+                  <!-- tags -->
+                  <template v-if="op.tags?.length">
+                    <el-tag
+                      v-for="tag in op.tags"
+                      :key="tag"
+                      size="small"
+                      type="info"
+                      style="margin-left:6px"
+                    >
+                      {{ tag }}
+                    </el-tag>
+                  </template>
+
+                  <el-tag size="small" :type="getStatusType(op.status)">
+                    {{ getStatusText(op.status) }}
+                  </el-tag>
                   <span class="author">
                     <el-icon><UserFilled /></el-icon>
                     {{ op.username || '匿名' }}
@@ -311,6 +328,30 @@ const fetchBookmarks = async () => {
 const handlePageChange = (page) => {
   currentPage.value = page
   fetchBookmarks()
+}
+
+const getStatusType = (status) => {
+  const typeMap = {
+    'pending': 'warning',
+    'approved': 'success',
+    'rejected': 'danger',
+    'under_review': 'info',
+    'in_progress': 'primary',
+    'completed': 'success'
+  }
+  return typeMap[status] || 'info'
+}
+
+const getStatusText = (status) => {
+  const statusMap = {
+    'pending': '待審核',
+    'approved': '已通過',
+    'rejected': '已拒絕',
+    'under_review': '審核中',
+    'in_progress': '處理中',
+    'completed': '已完成'
+  }
+  return statusMap[status] || status
 }
 
 const getRoleType = (role) => {

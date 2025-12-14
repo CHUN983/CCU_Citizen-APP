@@ -7,6 +7,7 @@ import asyncio
 from typing import Optional, List
 from services.ai_content_moderation_service import AIContentModerationService, ModerationDecision
 from services.ai_media_moderation_service import AIMediaModerationService
+from services.moderation_service import ModerationService
 
 
 async def process_opinion_moderation(
@@ -51,6 +52,7 @@ async def process_opinion_moderation(
 
         # 如果文本審核就被拒絕，直接更新狀態並返回
         if text_result['decision'] == ModerationDecision.REJECT:
+            ModerationService.reject_opinion(opinion_id, reason=text_result['reason'], moderator_id=0)
             AIContentModerationService.update_opinion_moderation_status(
                 opinion_id=opinion_id,
                 auto_moderation_status='rejected',
@@ -76,6 +78,7 @@ async def process_opinion_moderation(
 
             # 如果多媒體審核被拒絕
             if media_result['overall_decision'] == ModerationDecision.REJECT:
+                ModerationService.reject_opinion(opinion_id, reason=media_result['reason'], moderator_id=0)
                 AIContentModerationService.update_opinion_moderation_status(
                     opinion_id=opinion_id,
                     auto_moderation_status='rejected',
@@ -105,11 +108,12 @@ async def process_opinion_moderation(
             ModerationDecision.APPROVE: 'approved',
             ModerationDecision.REJECT: 'rejected',
             ModerationDecision.FLAG: 'flagged',
-            ModerationDecision.REVIEW: 'reviewing'
+            ModerationDecision.REVIEW: 'pending'
         }
 
         auto_moderation_status = status_mapping.get(final_decision, 'pending')
-
+        if not needs_manual_review:
+            ModerationService.approve_opinion(opinion_id, moderator_id=0)
         # 4. 更新意見的審核狀態
         AIContentModerationService.update_opinion_moderation_status(
             opinion_id=opinion_id,
@@ -129,7 +133,7 @@ async def process_opinion_moderation(
         try:
             AIContentModerationService.update_opinion_moderation_status(
                 opinion_id=opinion_id,
-                auto_moderation_status='reviewing',
+                auto_moderation_status='pending',
                 auto_moderation_score=0.0,
                 auto_category_id=current_category_id,
                 category_confidence=None,
