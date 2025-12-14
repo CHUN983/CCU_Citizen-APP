@@ -210,7 +210,12 @@ async def get_media_file(media_type: str, filename: str):
     - **media_type**: Type of media (image, video, audio)
     - **filename**: Name of the file
     """
-    file_path = UPLOAD_DIR / media_type / filename
+    # Convert media type to plural form to match directory structure
+    # Database stores: "image", "video", "audio" (singular)
+    # Directories are: "images", "videos", "audio" (plural for image/video)
+    media_type_dir = media_type + 's' if media_type in ['image', 'video'] else media_type
+
+    file_path = UPLOAD_DIR / media_type_dir / filename
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
