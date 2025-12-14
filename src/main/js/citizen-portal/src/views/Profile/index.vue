@@ -156,6 +156,56 @@
                 </div>
               </div>
             </el-tab-pane>
+
+            <el-tab-pane label="已拒絕" name="rejected">
+              <div v-loading="myOpinionsLoading">
+                <el-empty
+                  v-if="!myOpinionsLoading && rejectedOpinions.length === 0"
+                  description="目前沒有已拒絕的意見"
+                />
+
+                <div v-else class="opinion-list">
+                  <div
+                    v-for="op in rejectedOpinions"
+                    :key="op.id"
+                    class="opinion-item"
+                    @click="$router.push(`/opinions/${op.id}`)"
+                  >
+                    <div class="opinion-header">
+                      <h3 class="opinion-title">{{ op.title }}</h3>
+                      <div class="opinion-header-actions">
+                        <el-tag type="danger" size="small">已拒絕</el-tag>
+                        <el-button
+                          type="danger"
+                          size="small"
+                          text
+                          @click.stop="handleDeleteOpinion(op.id, op.title)"
+                        >
+                          <el-icon><Delete /></el-icon>
+                          刪除
+                        </el-button>
+                      </div>
+                    </div>
+                    <p class="opinion-content">{{ op.content }}</p>
+                    <div class="opinion-meta">
+                      <el-tag size="small">{{ op.category_name }}</el-tag>
+                      <span class="date">{{ formatDate(op.created_at) }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 分頁 -->
+                  <div class="pagination" v-if="myOpinionsTotal > myOpinionsPageSize">
+                    <el-pagination
+                      v-model:current-page="myOpinionsCurrentPage"
+                      :page-size="myOpinionsPageSize"
+                      :total="myOpinionsTotal"
+                      layout="total, prev, pager, next"
+                      @current-change="handleMyOpinionsPageChange"
+                    />
+                  </div>
+                </div>
+              </div>
+            </el-tab-pane>
           </el-tabs>
         </el-card>
         <el-card>
@@ -243,6 +293,10 @@ const pendingOpinions = computed(() =>
   opinionStore.myOpinions.filter(op => op.status === 'pending')
 )
 
+const rejectedOpinions = computed(() =>
+  opinionStore.myOpinions.filter(op => op.status === 'rejected')
+)
+
 // 分頁控制
 const currentPage = ref(1)
 const pageSize = ref(5)
@@ -251,7 +305,13 @@ const user = computed(() => userStore.user)
 
 const fetchMyOpinions = async () => {
   try {
-    const status = activeTab.value === 'approved' ? 'approved' : 'pending'
+    let status = 'approved'
+    if (activeTab.value === 'pending') {
+      status = 'pending'
+    } else if (activeTab.value === 'rejected') {
+      status = 'rejected'
+    }
+
     await opinionStore.fetchMyOpinions(
       myOpinionsCurrentPage.value,
       myOpinionsPageSize.value,
