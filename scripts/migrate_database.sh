@@ -13,7 +13,9 @@ NC='\033[0m'
 
 # 資料庫配置（從 .env 讀取）
 if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
+    set -a
+    source .env
+    set +a
 fi
 
 DB_HOST="${DB_HOST:-localhost}"

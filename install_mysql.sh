@@ -30,7 +30,9 @@ echo ""
 
 # 載入 .env 設定
 if [ -f ".env" ]; then
-    export $(cat .env | grep -v '^#' | xargs)
+    set -a
+    source .env
+    set +a
 fi
 
 # 設定 root 密碼並創建資料庫
