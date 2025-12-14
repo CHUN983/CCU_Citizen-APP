@@ -273,13 +273,32 @@ class AIContentModerationService:
                     'raw_response': result
                 }
 
+        except requests.exceptions.HTTPError as e:
+            # HTTP 錯誤（包括 429 速率限制）
+            if hasattr(e, 'response') and e.response is not None:
+                status_code = e.response.status_code
+                if status_code == 429:
+                    print(f"Error: OpenAI API rate limit exceeded after retries: {e}")
+                    error_msg = "AI 審核服務暫時繁忙，請稍後重試"
+                else:
+                    print(f"Error: OpenAI API HTTP error {status_code}: {e}")
+                    error_msg = f"AI 審核服務錯誤（HTTP {status_code}）"
+            else:
+                print(f"Error calling OpenAI Moderation API: {e}")
+                error_msg = "AI 審核服務暫時無法使用"
+            return {
+                'is_safe': True,
+                'confidence': 50.0,
+                'issues': {},
+                'error': error_msg
+            }
         except Exception as e:
             print(f"Error calling OpenAI Moderation API: {e}")
             return {
                 'is_safe': True,
                 'confidence': 50.0,
                 'issues': {},
-                'error': str(e)
+                'error': "AI 審核服務發生錯誤"
             }
 
     @staticmethod
@@ -398,9 +417,22 @@ class AIContentModerationService:
 
                 return category_id, confidence, reason
 
+        except requests.exceptions.HTTPError as e:
+            # HTTP 錯誤（包括 429 速率限制）
+            if hasattr(e, 'response') and e.response is not None:
+                status_code = e.response.status_code
+                if status_code == 429:
+                    print(f"Error: OpenAI API rate limit exceeded after retries: {e}")
+                    return None, 0.0, "AI 分類服務暫時繁忙，請稍後重試"
+                else:
+                    print(f"Error: OpenAI API HTTP error {status_code}: {e}")
+                    return None, 0.0, f"AI 分類服務錯誤（HTTP {status_code}）"
+            else:
+                print(f"Error calling OpenAI Classification API: {e}")
+                return None, 0.0, "AI 分類服務暫時無法使用"
         except Exception as e:
             print(f"Error calling OpenAI Classification API: {e}")
-            return None, 0.0, f"Error: {str(e)}"
+            return None, 0.0, "AI 分類服務發生錯誤"
 
     @staticmethod
     def moderate_text_content(

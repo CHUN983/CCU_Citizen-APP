@@ -185,13 +185,26 @@ class AIMediaModerationService:
                 }
 
         except Exception as e:
-            print(f"Error calling OpenAI Vision API: {e}")
+            import requests
+            # HTTP 錯誤（包括 429 速率限制）
+            if isinstance(e, requests.exceptions.HTTPError) and hasattr(e, 'response') and e.response is not None:
+                status_code = e.response.status_code
+                if status_code == 429:
+                    print(f"Error: OpenAI API rate limit exceeded after retries: {e}")
+                    error_msg = "AI 圖片審核服務暫時繁忙，請稍後重試"
+                else:
+                    print(f"Error: OpenAI API HTTP error {status_code}: {e}")
+                    error_msg = f"AI 圖片審核服務錯誤（HTTP {status_code}）"
+            else:
+                print(f"Error calling OpenAI Vision API: {e}")
+                error_msg = "AI 圖片審核服務發生錯誤"
+
             return {
                 'is_safe': True,
                 'confidence': 50.0,
                 'issues': [],
                 'description': '',
-                'error': str(e)
+                'error': error_msg
             }
 
     @staticmethod
