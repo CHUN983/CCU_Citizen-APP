@@ -118,10 +118,17 @@ def test_db_connection_pool():
 
 
 @pytest.fixture(scope="function", autouse=True)
-def cleanup_test_data(test_db_connection_pool):
+def cleanup_test_data(request):
     """
     自動清理測試資料 (在每個測試前後執行)
     """
+    if request.node.get_closest_marker("no_db"):
+        # 單元測試不需要資料庫，直接略過清理步驟
+        yield
+        return
+
+    test_db_connection_pool = request.getfixturevalue("test_db_connection_pool")
+
     def clean_tables():
         connection = test_db_connection_pool.get_connection()
         cursor = connection.cursor()
