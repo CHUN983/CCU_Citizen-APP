@@ -10,6 +10,7 @@ import requests
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
 from utils.database import get_db_cursor
+from utils.api_retry import exponential_backoff, OPENAI_RETRY_CONFIG
 from services.opinion_service import OpinionService
 from dotenv import load_dotenv
 
@@ -206,9 +207,11 @@ class AIContentModerationService:
         return best_cat_id, confidence, matched_kws.get(best_cat_id, "")
 
     @staticmethod
+    @exponential_backoff(**OPENAI_RETRY_CONFIG)
     def _call_openai_moderation(text: str) -> Dict:
         """
         調用OpenAI Moderation API檢測內容安全性
+        使用指數退避重試機制處理速率限制
         """
         api_key = ModerationConfig.openai_api_key
 
@@ -280,9 +283,11 @@ class AIContentModerationService:
             }
 
     @staticmethod
+    @exponential_backoff(**OPENAI_RETRY_CONFIG)
     def _call_openai_classification(title: str, content: str) -> Tuple[Optional[int], float, str]:
         """
         調用OpenAI API進行智能分類
+        使用指數退避重試機制處理速率限制
         """
         api_key = ModerationConfig.openai_api_key
         model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
@@ -292,7 +297,7 @@ class AIContentModerationService:
             return None, 0.0, "API key not configured"
 
         try:
-            
+
 
             # 獲取可用的分類列表
             with get_db_cursor() as cursor:
@@ -648,54 +653,12 @@ class AIContentModerationService:
             return False
 
     @staticmethod
-    def pick_merge_opinions(opinion_id: int) -> Tuple[Optional[int], Optional[Dict]]:
-        """合併相似意見（標記為重複）"""
-
-        """從資料庫中找尋新意見詳細資料"""
-        try:
-            with get_db_cursor() as cursor:
-                cursor.execute("SELECT title, content, category_id, region FROM opinions WHERE id = %s", (opinion_id,))
-                owner = cursor.fetchone()
-        except Exception as e:
-            print(f"Error search opinions: {e}")
-            return None, None
-        
+    @exponential_backoff(**OPENAI_RETRY_CONFIG)
+    def _call_openai_merge_api(api_key: str, model: str, payload: Dict) -> Dict:
         """
-        調用OpenAI API進行智能分類
+        調用 OpenAI API 進行意見合併分析
+        使用指數退避重試機制處理速率限制
         """
-
-        api_key = ModerationConfig.openai_api_key
-        model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
-
-        # 獲取可用的候選意見列表
-        candidate_opinions = OpinionService.get_similar_opinions(
-            opinion_id, owner['title'], owner['content'], owner['category_id'], 5)
-
-        # print(f"[Merge] Found {len(candidate_opinions)} candidate opinions")
-        candidates: List[Dict] = []
-        for c in candidate_opinions:
-            candidates.append({
-                "id": c.id,
-                "title": c.title,
-                "content": c.content,
-                "category_name": c.category_name or "",
-                "region": c.region or "",
-            })
-
-        if not candidates:
-            return None, None
-        # print(f"[Merge] candidates: {candidates}")
-
-        payload = {
-            "new_opinion": {
-                "id": opinion_id,
-                "title": owner['title'],
-                "content": owner['content'],
-                "region": owner['region'],
-            },
-            "candidates": candidates,
-        }
-
         # 構建prompt
         user_content = f"""
         請依照以下 JSON 輸出結果：
@@ -766,7 +729,59 @@ class AIContentModerationService:
         )
 
         response.raise_for_status()
-        result_json = response.json()
+        return response.json()
+
+    @staticmethod
+    def pick_merge_opinions(opinion_id: int) -> Tuple[Optional[int], Optional[Dict]]:
+        """合併相似意見（標記為重複）"""
+
+        """從資料庫中找尋新意見詳細資料"""
+        try:
+            with get_db_cursor() as cursor:
+                cursor.execute("SELECT title, content, category_id, region FROM opinions WHERE id = %s", (opinion_id,))
+                owner = cursor.fetchone()
+        except Exception as e:
+            print(f"Error search opinions: {e}")
+            return None, None
+
+        """
+        調用OpenAI API進行智能分類
+        """
+
+        api_key = ModerationConfig.openai_api_key
+        model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
+
+        # 獲取可用的候選意見列表
+        candidate_opinions = OpinionService.get_similar_opinions(
+            opinion_id, owner['title'], owner['content'], owner['category_id'], 5)
+
+        # print(f"[Merge] Found {len(candidate_opinions)} candidate opinions")
+        candidates: List[Dict] = []
+        for c in candidate_opinions:
+            candidates.append({
+                "id": c.id,
+                "title": c.title,
+                "content": c.content,
+                "category_name": c.category_name or "",
+                "region": c.region or "",
+            })
+
+        if not candidates:
+            return None, None
+        # print(f"[Merge] candidates: {candidates}")
+
+        payload = {
+            "new_opinion": {
+                "id": opinion_id,
+                "title": owner['title'],
+                "content": owner['content'],
+                "region": owner['region'],
+            },
+            "candidates": candidates,
+        }
+
+        # 調用帶有重試機制的 API
+        result_json = AIContentModerationService._call_openai_merge_api(api_key, model, payload)
 
         # 解析模型輸出內容
         content_str = result_json["choices"][0]["message"]["content"]

@@ -10,6 +10,7 @@ import base64
 from typing import Dict, Optional
 from pathlib import Path
 from services.ai_content_moderation_service import ModerationDecision, AIContentModerationService, ModerationConfig
+from utils.api_retry import exponential_backoff, OPENAI_RETRY_CONFIG
 
 
 class AIMediaModerationService:
@@ -39,9 +40,11 @@ class AIMediaModerationService:
         return mime_types.get(ext, 'image/jpeg')
 
     @staticmethod
+    @exponential_backoff(**OPENAI_RETRY_CONFIG)
     def _call_openai_vision_api(image_path: str, is_url: bool = False) -> Dict:
         """
         調用OpenAI Vision API檢測圖片內容
+        使用指數退避重試機制處理速率限制
         """
         api_key = ModerationConfig.openai_api_key
         model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
