@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { Capacitor } from '@capacitor/core'
 
-// 在移動應用中使用 WSL2 IP，在網頁中使用相對路徑
+// 在移動應用中使用 WSL2 IP，在網頁中使用 Vite 代理
 const getBaseURL = () => {
   if (Capacitor.isNativePlatform()) {
     const platform = Capacitor.getPlatform()
@@ -19,8 +19,9 @@ const getBaseURL = () => {
     // iOS 或其他平台：直接訪問遠端伺服器
     return 'https://140.123.105.199:8443/'
   }
-  // 網頁瀏覽器：直接訪問遠端伺服器
-  return 'https://140.123.105.199:8443/'
+  // 網頁瀏覽器：使用 Vite 代理（避免 CORS 和證書問題）
+  // Vite dev server 會將 /api/* 請求代理到 https://140.123.105.199:8443/*
+  return '/api'
 }
 
 const instance = axios.create({

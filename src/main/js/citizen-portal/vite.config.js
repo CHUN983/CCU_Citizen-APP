@@ -14,9 +14,9 @@ export default defineConfig({
     // },
     proxy: {
       '/api': {
-        target: 'http://140.123.105.199:8080/',
+        target: 'https://140.123.105.199:8443/',  // 更新為 HTTPS 端口
         changeOrigin: true,
-        secure: false, // ← 必加！否則本機自簽證書會被擋
+        secure: false, // ← 必加！忽略自簽名證書
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
