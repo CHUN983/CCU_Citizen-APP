@@ -63,22 +63,29 @@ def test_db_connection_pool():
             "-e", f"CREATE DATABASE IF NOT EXISTS {TEST_DB_CONFIG['database']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
         ], check=True, capture_output=True, text=True)
 
-        # 應用 schema (使用 subprocess 更可靠)
-        # 使用 --force 來忽略重複鍵錯誤 (因為資料庫已經有資料)
-        schema_file = project_root / "src/main/resources/config/schema.sql"
-        with open(schema_file, 'rb') as f:
-            result = subprocess.run([
-                "mysql", "-u", TEST_DB_CONFIG["user"],
-                f"-p{TEST_DB_CONFIG['password']}",
-                "--force",  # 忽略錯誤繼續執行
-                TEST_DB_CONFIG["database"]
-            ], stdin=f, capture_output=True, text=True)
+        # 依序套用 schema 與 AI moderation 擴充
+        config_dir = project_root / "src/main/resources/config"
+        sql_files = [
+            config_dir / "schema.sql",
+            config_dir / "add_ai_moderation_safe.sql"
+        ]
 
-            # 只在非重複鍵錯誤時報錯
+        for sql_file in sql_files:
+            if not sql_file.exists():
+                raise FileNotFoundError(f"SQL file not found: {sql_file}")
+
+            with open(sql_file, 'rb') as f:
+                result = subprocess.run([
+                    "mysql", "-u", TEST_DB_CONFIG["user"],
+                    f"-p{TEST_DB_CONFIG['password']}",
+                    "--force",  # 忽略重複鍵錯誤等提醒
+                    TEST_DB_CONFIG["database"]
+                ], stdin=f, capture_output=True, text=True)
+
             if result.returncode != 0:
                 stderr_lower = result.stderr.lower()
                 if "duplicate entry" not in stderr_lower and "already exists" not in stderr_lower:
-                    print(f"Schema execution warnings/errors:\n{result.stderr}")
+                    print(f"Schema execution warnings/errors ({sql_file.name}):\n{result.stderr}")
 
         print(f"✅ Test database '{TEST_DB_CONFIG['database']}' initialized successfully")
 
