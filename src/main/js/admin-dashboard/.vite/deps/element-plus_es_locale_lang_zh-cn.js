@@ -8,31 +8,31 @@ var zhCn = {
       label: "面包屑"
     },
     colorpicker: {
-      confirm: "确定",
+      confirm: "確定",
       clear: "清空",
-      defaultLabel: "颜色选择器",
-      description: "当前颜色 {color}，按 Enter 键选择新颜色",
-      alphaLabel: "选择透明度的值",
-      alphaDescription: "透明度 {alpha}, 当前颜色 {color}",
-      hueLabel: "选择色相值",
-      hueDescription: "色相 {hue}, 当前颜色 {color}"
+      defaultLabel: "顏色選擇器",
+      description: "當前顏色 {color}，按 Enter 鍵選擇新顏色",
+      alphaLabel: "選擇透明度的值",
+      alphaDescription: "透明度 {alpha}, 當前顏色 {color}",
+      hueLabel: "選擇色相值",
+      hueDescription: "色相 {hue}, 當前顏色 {color}"
     },
     datepicker: {
       now: "此刻",
       today: "今天",
       cancel: "取消",
       clear: "清空",
-      confirm: "确定",
-      dateTablePrompt: "使用方向键与 Enter 键可选择日期",
-      monthTablePrompt: "使用方向键与 Enter 键可选择月份",
-      yearTablePrompt: "使用方向键与 Enter 键可选择年份",
+      confirm: "確定",
+      dateTablePrompt: "使用方向鍵與 Enter 鍵可選擇日期",
+      monthTablePrompt: "使用方向鍵與 Enter 鍵可選擇月份",
+      yearTablePrompt: "使用方向鍵與 Enter 鍵可選擇年份",
       selectedDate: "已选日期",
-      selectDate: "选择日期",
-      selectTime: "选择时间",
+      selectDate: "選擇日期",
+      selectTime: "選擇时间",
       startDate: "开始日期",
       startTime: "开始时间",
-      endDate: "结束日期",
-      endTime: "结束时间",
+      endDate: "結束日期",
+      endTime: "結束时间",
       prevYear: "前一年",
       nextYear: "后一年",
       prevMonth: "上个月",
@@ -88,98 +88,98 @@ var zhCn = {
       increase: "增加数值"
     },
     select: {
-      loading: "加载中",
-      noMatch: "无匹配数据",
-      noData: "无数据",
-      placeholder: "请选择"
+      loading: "加載中",
+      noMatch: "無匹配數據",
+      noData: "無數據",
+      placeholder: "請選擇"
     },
     mention: {
-      loading: "加载中"
+      loading: "加載中"
     },
     dropdown: {
-      toggleDropdown: "切换下拉选项"
+      toggleDropdown: "切換下拉选項"
     },
     cascader: {
-      noMatch: "无匹配数据",
-      loading: "加载中",
-      placeholder: "请选择",
-      noData: "暂无数据"
+      noMatch: "無匹配數據",
+      loading: "加載中",
+      placeholder: "請選擇",
+      noData: "暫無數據"
     },
     pagination: {
       goto: "前往",
-      pagesize: "条/页",
-      total: "共 {total} 条",
-      pageClassifier: "页",
-      page: "页",
-      prev: "上一页",
-      next: "下一页",
-      currentPage: "第 {pager} 页",
-      prevPages: "向前 {pager} 页",
-      nextPages: "向后 {pager} 页",
-      deprecationWarning: "你使用了一些已被废弃的用法，请参考 el-pagination 的官方文档"
+      pagesize: "條/頁",
+      total: "共 {total} 條",
+      pageClassifier: "頁",
+      page: "頁",
+      prev: "上一頁",
+      next: "下一頁",
+      currentPage: "第 {pager} 頁",
+      prevPages: "向前 {pager} 頁",
+      nextPages: "向後 {pager} 頁",
+      deprecationWarning: "你使用了一些已被废弃的用法，請参考 el-pagination 的官方文档"
     },
     dialog: {
-      close: "关闭此对话框"
+      close: "關閉此對話框"
     },
     drawer: {
-      close: "关闭此对话框"
+      close: "關閉此對話框"
     },
     messagebox: {
       title: "提示",
-      confirm: "确定",
+      confirm: "確定",
       cancel: "取消",
-      error: "输入的数据不合法!",
-      close: "关闭此对话框"
+      error: "輸入的數據不合法!",
+      close: "關閉此對話框"
     },
     upload: {
-      deleteTip: "按 Delete 键可删除",
-      delete: "删除",
-      preview: "查看图片",
-      continue: "继续上传"
+      deleteTip: "按 Delete 鍵可刪除",
+      delete: "刪除",
+      preview: "查看圖片",
+      continue: "繼續上傳"
     },
     slider: {
-      defaultLabel: "滑块介于 {min} 至 {max}",
-      defaultRangeStartLabel: "选择起始值",
-      defaultRangeEndLabel: "选择结束值"
+      defaultLabel: "範圍介于 {min} 至 {max}",
+      defaultRangeStartLabel: "選擇起始值",
+      defaultRangeEndLabel: "選擇結束值"
     },
     table: {
-      emptyText: "暂无数据",
-      confirmFilter: "筛选",
+      emptyText: "暫無數據",
+      confirmFilter: "篩選",
       resetFilter: "重置",
       clearFilter: "全部",
-      sumText: "合计"
+      sumText: "總計"
     },
     tour: {
       next: "下一步",
       previous: "上一步",
-      finish: "结束导览",
-      close: "关闭此对话框"
+      finish: "結束導覽",
+      close: "關閉此對話框"
     },
     tree: {
-      emptyText: "暂无数据"
+      emptyText: "暫無數據"
     },
     transfer: {
-      noMatch: "无匹配数据",
-      noData: "无数据",
+      noMatch: "無匹配數據",
+      noData: "無數據",
       titles: ["列表 1", "列表 2"],
-      filterPlaceholder: "请输入搜索内容",
-      noCheckedFormat: "共 {total} 项",
-      hasCheckedFormat: "已选 {checked}/{total} 项"
+      filterPlaceholder: "請輸入搜索内容",
+      noCheckedFormat: "共 {total} 項",
+      hasCheckedFormat: "已选 {checked}/{total} 項"
     },
     image: {
-      error: "加载失败"
+      error: "加載失敗"
     },
     pageHeader: {
       title: "返回"
     },
     popconfirm: {
-      confirmButtonText: "确定",
+      confirmButtonText: "確定",
       cancelButtonText: "取消"
     },
     carousel: {
-      leftArrow: "上一张幻灯片",
-      rightArrow: "下一张幻灯片",
-      indicator: "幻灯片切换至索引 {index}"
+      leftArrow: "上一張幻燈片",
+      rightArrow: "下一張幻燈片",
+      indicator: "幻燈片切換至索引 {index}"
     }
   }
 };
