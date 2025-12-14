@@ -6,10 +6,13 @@ AI Content Moderation Service
 import os
 import json
 import time
+import requests
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
 from utils.database import get_db_cursor
+from utils.api_retry import exponential_backoff, OPENAI_RETRY_CONFIG
 from services.moderation_service import ModerationService
+from services.opinion_service import OpinionService
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -204,9 +207,11 @@ class AIContentModerationService:
         return best_cat_id, confidence, matched_kws.get(best_cat_id, "")
 
     @staticmethod
+    @exponential_backoff(**OPENAI_RETRY_CONFIG)
     def _call_openai_moderation(text: str) -> Dict:
         """
         調用OpenAI Moderation API檢測內容安全性
+        使用指數退避重試機制處理速率限制
         """
         api_key = ModerationConfig.openai_api_key
 
@@ -278,9 +283,11 @@ class AIContentModerationService:
             }
 
     @staticmethod
+    @exponential_backoff(**OPENAI_RETRY_CONFIG)
     def _call_openai_classification(title: str, content: str) -> Tuple[Optional[int], float, str]:
         """
         調用OpenAI API進行智能分類
+        使用指數退避重試機制處理速率限制
         """
         api_key = ModerationConfig.openai_api_key
         model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
