@@ -355,8 +355,8 @@ INSERT INTO categories (name, parent_id, description) VALUES
 -- ============================================================================
 -- 密碼都是 admin123，生產環境請務必修改！
 INSERT INTO users (username, email, password_hash, full_name, role) VALUES
-('admin', 'admin@citizenapp.local', '$2b$12$sQ6ZiVBOMRTEZW2ANU6fEOSWoXWbdhei3ZCnRw6qRl87w9pvITO4q', '系統管理員', 'admin'),
-('ai_content_moderator', 'ai@citizenapp.local', '$2b$12$sQ6ZiVBOMRTEZW2ANU6fEOSWoXWbdhei3ZCnRw6qRl87w9pvITO4q', 'AI審核系統', 'admin');
+('admin', 'admin@gmail.com', '$2b$12$sQ6ZiVBOMRTEZW2ANU6fEOSWoXWbdhei3ZCnRw6qRl87w9pvITO4q', '系統管理員', 'admin'),
+('ai_content_moderator', 'ai@gmail.com', '$2b$12$sQ6ZiVBOMRTEZW2ANU6fEOSWoXWbdhei3ZCnRw6qRl87w9pvITO4q', 'AI審核系統', 'admin');
 
 -- 將 AI 審核系統設為 ID=0（特殊帳號）
 UPDATE users SET id = 0 WHERE username = 'ai_content_moderator';
