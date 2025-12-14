@@ -232,82 +232,30 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-/* 手機版響應式設計 */
+/* 手機版響應式設計 - 簡化為只顯示 App Icon */
 @media (max-width: 768px) {
   .header-container {
-    flex-wrap: wrap;
-    padding: 4px 8px;
-    align-items: flex-start;
+    justify-content: center;
+    padding: 8px;
   }
 
   .logo {
-    font-size: 16px;
-    gap: 6px;
+    font-size: 18px;
+    gap: 8px;
   }
 
   .logo .el-icon {
-    font-size: 20px !important;
+    font-size: 24px !important;
   }
 
   .title {
-    font-size: 14px;
+    font-size: 16px;
   }
 
-  /* 導航選單移到下一行，佔滿整行 */
-  .nav-menu {
-    order: 3;
-    width: 100%;
-    margin: 4px 0 0 0;
-  }
-
-  .nav-menu :deep(.el-menu) {
-    justify-content: flex-start;
-  }
-
-  .nav-menu :deep(.el-menu-item) {
-    padding: 0 10px !important;
-    font-size: 13px;
-    height: 40px;
-    line-height: 40px;
-  }
-
-  /* 使用者區域保持在右上角 */
+  /* 手機版隱藏導航選單和使用者區域，改用底部導航 */
+  .nav-menu,
   .user-section {
-    gap: 6px;
-    margin-left: auto;
-  }
-
-  .user-section :deep(.el-button) {
-    font-size: 12px;
-    padding: 5px 10px;
-    height: 28px;
-  }
-
-  .user-info {
-    padding: 0 4px;
-    font-size: 12px;
-  }
-
-  .user-info span {
-    max-width: 50px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .notification-badge {
-    margin-right: 0;
-  }
-
-  .notification-button {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-  }
-
-  .notification-dropdown {
-    min-width: 90vw;
-    max-width: 90vw;
+    display: none;
   }
 }
 
