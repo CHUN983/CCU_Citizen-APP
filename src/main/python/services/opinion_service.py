@@ -185,7 +185,7 @@ class OpinionService:
 
         SORT_MAP = {
             "created_at": ("o.created_at", "DESC"),
-            "comment_count": ("o.comment_count", "ASC"),
+            "comment_count": ("comment_count", "DESC"),
             "upvotes": ("upvotes", "DESC"),
         }
         sort_column, sort_order = SORT_MAP.get(sort_by, ("o.created_at", "DESC"))
