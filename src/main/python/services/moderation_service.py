@@ -36,7 +36,7 @@ class ModerationService:
         """Merge source opinion into target opinion"""
         query = """
             UPDATE opinions
-            SET merged_to_id = %s, status = 'merged'
+            SET merged_to_id = %s, status = 'resolved'
             WHERE id = %s
         """
 

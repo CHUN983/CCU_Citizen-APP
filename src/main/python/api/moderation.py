@@ -79,6 +79,10 @@ async def merge_opinions(
     moderator: dict = Depends(require_moderator)
 ):
     """Merge opinion into another"""
+    # Validate: cannot merge opinion with itself
+    if opinion_id == request.target_id:
+        raise HTTPException(status_code=400, detail="Cannot merge opinion with itself")
+
     success = ModerationService.merge_opinions(
         opinion_id, request.target_id, moderator["user_id"]
     )

@@ -519,7 +519,7 @@ class TestModeratorPermissions:
         self,
         test_client: TestClient,
         test_moderator_data,
-        test_db_session,
+        create_test_moderator,
         create_test_opinion
     ):
         """
@@ -527,18 +527,8 @@ class TestModeratorPermissions:
         測試目標: 驗證審核員擁有審核權限
         優先級: High
         """
-        from models.user import User
-        from utils.security import hash_password
-
-        # 建立審核員
-        moderator = User(
-            username=test_moderator_data["username"],
-            email=test_moderator_data["email"],
-            password_hash=hash_password(test_moderator_data["password"]),
-            role=test_moderator_data["role"]
-        )
-        test_db_session.add(moderator)
-        test_db_session.commit()
+        # 使用 create_test_moderator fixture 建立審核員
+        # 審核員已在 fixture 中建立
 
         # 登入獲取 Token
         login_response = test_client.post(

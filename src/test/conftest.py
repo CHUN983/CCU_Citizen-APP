@@ -339,6 +339,41 @@ def create_test_admin(test_db_connection, test_admin_data):
 
 
 @pytest.fixture(scope="function")
+def create_test_moderator(test_db_connection, test_moderator_data):
+    """
+    建立測試審核員並返回用戶物件
+    """
+    from utils.security import hash_password
+
+    cursor = test_db_connection.cursor(dictionary=True)
+
+    # 插入審核員
+    insert_sql = """
+        INSERT INTO users (username, email, password_hash, role, is_active)
+        VALUES (%s, %s, %s, %s, %s)
+    """
+    cursor.execute(insert_sql, (
+        test_moderator_data["username"],
+        test_moderator_data["email"],
+        hash_password(test_moderator_data["password"]),
+        test_moderator_data["role"],
+        True
+    ))
+    test_db_connection.commit()
+
+    # 獲取插入的審核員 ID
+    moderator_id = cursor.lastrowid
+
+    # 查詢並返回審核員資料
+    cursor.execute("SELECT * FROM users WHERE id = %s", (moderator_id,))
+    moderator = cursor.fetchone()
+    cursor.close()
+
+    # 將字典轉換為可以用屬性存取的物件
+    return SimpleNamespace(**moderator) if moderator else None
+
+
+@pytest.fixture(scope="function")
 def auth_headers_user(test_client, test_user_data, create_test_user):
     """
     獲取普通用戶的認證標頭
