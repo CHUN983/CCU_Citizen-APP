@@ -18,4 +18,13 @@
             <certificates src="user" />
         </trust-anchors>
     </domain-config>
+
+    <!-- Android 模擬器：信任 10.0.2.2（主機）的自簽名證書 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
 </network-security-config>
