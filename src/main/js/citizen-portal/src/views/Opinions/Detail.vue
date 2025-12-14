@@ -37,7 +37,6 @@
           v-if="opinion.media && opinion.media.length"
           class="media-section"
         >
-          <h3 class="media-title">相關多媒體</h3>
           <div class="media-grid">
             <template
               v-for="m in opinion.media"
