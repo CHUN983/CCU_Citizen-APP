@@ -18,6 +18,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false, // ← 必加！忽略自簽名證書
         rewrite: (path) => path.replace(/^\/api/, '')
+      },
+      '/media': {
+        target: 'https://140.123.105.199:8443/',  // 媒體文件代理
+        changeOrigin: true,
+        secure: false, // 忽略自簽名證書
+        // 不需要 rewrite，直接轉發 /media 路徑
       }
     }
   },
