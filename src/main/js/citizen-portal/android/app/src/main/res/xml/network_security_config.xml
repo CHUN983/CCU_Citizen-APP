@@ -10,6 +10,14 @@
         </trust-anchors>
     </base-config>
 
+    <!-- 開發環境特殊配置：完全信任 localhost 和 10.0.2.2 -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+
     <!-- 針對開發伺服器的特殊配置 -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">140.123.105.199</domain>
@@ -22,6 +30,7 @@
     <!-- Android 模擬器：信任 10.0.2.2（主機）的自簽名證書 -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">localhost</domain>
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />
