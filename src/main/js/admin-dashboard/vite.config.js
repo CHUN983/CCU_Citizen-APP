@@ -22,8 +22,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://140.123.105.199:8080/',
+        target: 'https://140.123.105.199:8443/',
         changeOrigin: true,
+        secure: false, // 允許自簽名證書
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
