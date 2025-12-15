@@ -10,7 +10,7 @@ on:
 # 環境變數
 env:
   PYTHON_VERSION: '3.10'
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'  # 更新至 Node 20 以支援 Vite 7.x (需要 20.19+)
 
 jobs:
   # ==========================================
