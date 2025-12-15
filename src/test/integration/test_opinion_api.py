@@ -658,7 +658,7 @@ class TestOpinionUserQueries:
         測試目標: 驗證用戶可以獲取自己收藏的意見
         優先級: High
         """
-        opinion_id = create_test_opinion["id"]
+        opinion_id = create_test_opinion.id
 
         # 先收藏意見
         collect_response = test_client.post(
@@ -693,7 +693,7 @@ class TestOpinionUserQueries:
         測試目標: 驗證用戶可以獲取自己創建的所有意見
         優先級: High
         """
-        opinion_id = create_test_opinion["id"]
+        opinion_id = create_test_opinion.id
 
         # 獲取我的意見列表
         response = test_client.get(
@@ -746,7 +746,7 @@ class TestOpinionCommentRetrieval:
         測試目標: 驗證可以獲取指定意見的所有留言
         優先級: High
         """
-        opinion_id = create_test_opinion["id"]
+        opinion_id = create_test_opinion.id
 
         # 先添加一個留言
         comment_response = test_client.post(
@@ -780,7 +780,7 @@ class TestOpinionCommentRetrieval:
         測試目標: 驗證可以限制返回的留言數量
         優先級: Medium
         """
-        opinion_id = create_test_opinion["id"]
+        opinion_id = create_test_opinion.id
 
         # 添加多個留言
         for i in range(5):
@@ -834,7 +834,7 @@ class TestOpinionStatusQueries:
         測試目標: 驗證可以查詢用戶對特定意見的投票狀態
         優先級: High
         """
-        opinion_id = create_test_opinion["id"]
+        opinion_id = create_test_opinion.id
 
         # 先投票
         vote_response = test_client.post(
@@ -885,7 +885,7 @@ class TestOpinionStatusQueries:
         測試目標: 驗證可以查詢用戶是否收藏了特定意見
         優先級: High
         """
-        opinion_id = create_test_opinion["id"]
+        opinion_id = create_test_opinion.id
 
         # 先收藏
         collect_response = test_client.post(
@@ -916,7 +916,7 @@ class TestOpinionStatusQueries:
         測試目標: 驗證未收藏的意見返回 false
         優先級: Medium
         """
-        opinion_id = create_test_opinion["id"]
+        opinion_id = create_test_opinion.id
 
         # 直接獲取收藏狀態 (未收藏)
         response = test_client.get(
@@ -963,7 +963,7 @@ class TestOpinionDeletion:
         測試目標: 驗證用戶可以刪除自己創建的意見
         優先級: High
         """
-        opinion_id = create_test_opinion["id"]
+        opinion_id = create_test_opinion.id
 
         # 執行刪除
         response = test_client.delete(
@@ -1009,7 +1009,7 @@ class TestOpinionDeletion:
         測試目標: 驗證用戶無法刪除他人創建的意見
         優先級: Critical
         """
-        opinion_id = create_test_opinion["id"]
+        opinion_id = create_test_opinion.id
 
         # 創建另一個用戶
         register_response = test_client.post(
