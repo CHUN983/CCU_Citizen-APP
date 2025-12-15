@@ -208,8 +208,9 @@ class TestOpinionRetrieval:
         assert data["id"] == opinion_id
         assert data["title"] == create_test_opinion.title
         assert data["content"] == create_test_opinion.content
-        assert "vote_count" in data
-        assert "comment_count" in data
+        assert "upvotes" in data, "應包含讚成票數"
+        assert "downvotes" in data, "應包含反對票數"
+        assert "comment_count" in data, "應包含留言數"
 
     def test_get_opinion_detail_not_found(self, test_client: TestClient):
         """
