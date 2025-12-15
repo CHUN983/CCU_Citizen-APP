@@ -383,11 +383,11 @@ class TestModerateTextContent:
     @patch.object(AIContentModerationService, '_classify_by_keywords')
     @patch.object(AIContentModerationService, '_call_openai_classification')
     def test_reject_by_ai_detection(self, mock_ai_classify, mock_classify, mock_openai, mock_check_words):
-        """TC-AI-019: AI 檢測拒絕"""
+        """TC-AI-019: AI 檢測拒絕 (極高風險自動拒絕)"""
         mock_check_words.return_value = (False, None, None)
         mock_openai.return_value = {
             'is_safe': False,
-            'confidence': 5.0,  # 低信心度 = 高風險
+            'confidence': 5.0,  # 低信心度 = 高風險，應觸發自動拒絕
             'issues': {'violence': 0.95}
         }
         mock_classify.return_value = (None, 0.0, "")
@@ -398,8 +398,9 @@ class TestModerateTextContent:
             content="AI 檢測為不安全的內容"
         )
 
-        assert result['decision'] == ModerationDecision.FLAG
+        assert result['decision'] == ModerationDecision.REJECT
         assert result['is_safe'] is False
+        assert result['confidence'] == 95.0  # 100 - 5.0
 
     @patch.object(AIContentModerationService, '_check_sensitive_words')
     @patch.object(AIContentModerationService, '_call_openai_moderation')
