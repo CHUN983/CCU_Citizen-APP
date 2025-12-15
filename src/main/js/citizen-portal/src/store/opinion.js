@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { opinionAPI, categoryAPI } from '../api'
 import { useUserStore } from './user'
+import { processOpinionMediaUrls, processOpinionsMediaUrls } from '@/utils/mediaUrl'
 
 const userStore = useUserStore()
 
@@ -26,7 +27,8 @@ export const useOpinionStore = defineStore('opinion', {
       this.loading = true
       try {
         const data = await opinionAPI.getList(params)
-        this.opinions = data.items || []
+        // 處理媒體 URL（Android/iOS 需要完整 URL）
+        this.opinions = processOpinionsMediaUrls(data.items || [])
         this.total = data.total || 0
 
         return data
@@ -54,9 +56,12 @@ export const useOpinionStore = defineStore('opinion', {
             votePromise
           ])
 
+          // 處理媒體 URL（Android/iOS 需要完整 URL）
+          const processedOpinion = processOpinionMediaUrls(opinionData)
+
           // 把 like/support 數量和用戶投票狀態合併進 currentOpinion
           this.currentOpinion = {
-            ...opinionData,
+            ...processedOpinion,
             is_bookmarked: collectStatus.is_collected ?? false,
             user_vote: voteStatus.vote_type // 'like', 'support', or null
           }
@@ -77,7 +82,8 @@ export const useOpinionStore = defineStore('opinion', {
           page_size: pageSize
         }
         const data = await opinionAPI.getBookmarked(params)
-        this.bookmarkedOpinions = data.items || []
+        // 處理媒體 URL（Android/iOS 需要完整 URL）
+        this.bookmarkedOpinions = processOpinionsMediaUrls(data.items || [])
         this.bookmarkedTotal = data.total || 0
         return data
       } catch (error) {
@@ -98,7 +104,8 @@ export const useOpinionStore = defineStore('opinion', {
           params.status = status
         }
         const data = await opinionAPI.getMyOpinions(params)
-        this.myOpinions = data.items || []
+        // 處理媒體 URL（Android/iOS 需要完整 URL）
+        this.myOpinions = processOpinionsMediaUrls(data.items || [])
         this.myOpinionsTotal = data.total || 0
         return data
       } catch (error) {
