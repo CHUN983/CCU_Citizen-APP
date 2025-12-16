@@ -643,6 +643,86 @@ class OpinionService:
 
 
     @staticmethod
+    def update_opinion(opinion_id: int, user_id: int, update_data: OpinionUpdate) -> Optional[OpinionWithUser]:
+        """
+        Update an opinion
+        Only the opinion owner can update their own opinion
+        Returns updated opinion if successful, None otherwise
+        """
+        # Build dynamic update query based on provided fields
+        update_fields = []
+        params = []
+
+        if update_data.title is not None:
+            update_fields.append("title = %s")
+            params.append(update_data.title)
+
+        if update_data.content is not None:
+            update_fields.append("content = %s")
+            params.append(update_data.content)
+
+        if update_data.category_id is not None:
+            update_fields.append("category_id = %s")
+            params.append(update_data.category_id)
+
+        if update_data.region is not None:
+            update_fields.append("region = %s")
+            params.append(update_data.region)
+
+        if update_data.latitude is not None:
+            update_fields.append("latitude = %s")
+            params.append(update_data.latitude)
+
+        if update_data.longitude is not None:
+            update_fields.append("longitude = %s")
+            params.append(update_data.longitude)
+
+        if update_data.status is not None:
+            update_fields.append("status = %s")
+            params.append(update_data.status.value)
+
+        if update_data.is_public is not None:
+            update_fields.append("is_public = %s")
+            params.append(update_data.is_public)
+
+        # If no fields to update, return current opinion
+        if not update_fields:
+            return OpinionService.get_opinion_by_id(opinion_id)
+
+        # Add updated_at timestamp
+        update_fields.append("updated_at = NOW()")
+
+        # Add opinion_id and user_id to params
+        params.extend([opinion_id, user_id])
+
+        query = f"""
+            UPDATE opinions
+            SET {', '.join(update_fields)}
+            WHERE id = %s AND user_id = %s
+        """
+
+        try:
+            with get_db_cursor() as cursor:
+                cursor.execute(query, params)
+
+                if cursor.rowcount == 0:
+                    return None
+
+                # Log history
+                cursor.execute(
+                    """INSERT INTO opinion_history (opinion_id, user_id, action, new_status)
+                    VALUES (%s, %s, 'updated', (SELECT status FROM opinions WHERE id = %s))""",
+                    (opinion_id, user_id, opinion_id)
+                )
+
+            # Return updated opinion
+            return OpinionService.get_opinion_by_id(opinion_id)
+
+        except Exception as e:
+            print(f"Error updating opinion: {e}")
+            return None
+
+    @staticmethod
     def delete_opinion(opinion_id: int, user_id: int) -> bool:
         """
         Delete an opinion (hard delete with CASCADE)
@@ -660,6 +740,27 @@ class OpinionService:
                 return cursor.rowcount > 0
         except Exception as e:
             print(f"Error deleting opinion: {e}")
+            return False
+
+    @staticmethod
+    def delete_comment(comment_id: int, user_id: int) -> bool:
+        """
+        Delete a comment (soft delete)
+        Only the comment owner can delete their own comment
+        Returns True if deleted, False if not found or unauthorized
+        """
+        query = """
+            UPDATE comments
+            SET is_deleted = TRUE
+            WHERE id = %s AND user_id = %s AND is_deleted = FALSE
+        """
+
+        try:
+            with get_db_cursor() as cursor:
+                cursor.execute(query, (comment_id, user_id))
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting comment: {e}")
             return False
 
     @staticmethod

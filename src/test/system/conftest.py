@@ -137,9 +137,29 @@ def authenticated_client(api_client, test_user_credentials):
         test_user_credentials["password"]
     )
 
-    # 如果登入失敗，可能需要先註冊
+    # 如果登入失敗，先註冊用戶
     if response.status_code != 200:
-        # 這裡可以添加註冊邏輯，或者假設用戶已經存在
-        pass
+        # 註冊新用戶
+        register_data = {
+            "username": test_user_credentials["username"],
+            "email": f"{test_user_credentials['username']}@test.com",
+            "password": test_user_credentials["password"],
+            "role": "citizen"
+        }
+
+        register_response = api_client.post("/auth/register", json=register_data)
+
+        # 如果註冊成功或用戶已存在，再次嘗試登入
+        if register_response.status_code in [200, 201, 400]:  # 400 可能表示用戶已存在
+            response = api_client.login(
+                test_user_credentials["username"],
+                test_user_credentials["password"]
+            )
+
+        # 如果還是失敗，拋出錯誤
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"無法登入測試用戶: {response.status_code} - {response.text}"
+            )
 
     return api_client

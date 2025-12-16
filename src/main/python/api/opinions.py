@@ -5,7 +5,7 @@ Opinion API routes
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from typing import Optional, List
 
-from models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus, OpinionWithUser
+from models.opinion import Opinion, OpinionCreate, OpinionUpdate, OpinionList, OpinionStatus, OpinionWithUser
 from models.comment import Comment, CommentCreate
 from models.vote import VoteCreate
 from services.opinion_service import OpinionService
@@ -111,6 +111,24 @@ async def get_opinion(opinion_id: int):
     return opinion
 
 
+@router.put("/{opinion_id}", response_model=OpinionWithUser, status_code=200)
+async def update_opinion(
+    opinion_id: int,
+    update_data: OpinionUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update an opinion (only by owner)"""
+    updated_opinion = OpinionService.update_opinion(opinion_id, current_user["user_id"], update_data)
+
+    if not updated_opinion:
+        raise HTTPException(
+            status_code=404,
+            detail="意見不存在或您無權編輯此意見"
+        )
+
+    return updated_opinion
+
+
 @router.post("/{opinion_id}/comments", response_model=Comment, status_code=201)
 async def add_comment(
     opinion_id: int,
@@ -145,6 +163,37 @@ async def get_comments(
     comments = OpinionService.get_comments_by_opinion_id(opinion_id, limit)
 
     return comments
+
+
+@router.delete("/{opinion_id}/comments/{comment_id}", status_code=200)
+async def delete_comment(
+    opinion_id: int,
+    comment_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a comment (only by comment owner)"""
+    # Check if opinion exists
+    opinion = OpinionService.get_opinion_by_id(opinion_id)
+    if not opinion:
+        raise HTTPException(status_code=404, detail="Opinion not found")
+
+    # Check if comment exists and belongs to opinion
+    comment = OpinionService.get_comment_by_id(comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    if comment.opinion_id != opinion_id:
+        raise HTTPException(status_code=400, detail="Comment does not belong to this opinion")
+
+    success = OpinionService.delete_comment(comment_id, current_user["user_id"])
+
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail="評論不存在或您無權刪除此評論"
+        )
+
+    return {"message": "評論已成功刪除"}
 
 
 @router.post("/{opinion_id}/vote", status_code=200)
