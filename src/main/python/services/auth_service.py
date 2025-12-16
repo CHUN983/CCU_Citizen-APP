@@ -3,9 +3,9 @@ Authentication service
 """
 
 from typing import Optional
-from ..models.user import User, UserCreate, UserLogin, UserInDB, Token
-from ..utils.database import get_db_cursor
-from ..utils.security import hash_password, verify_password, create_access_token
+from models.user import User, UserCreate, UserLogin, UserInDB, Token
+from utils.database import get_db_cursor
+from utils.security import hash_password, verify_password, create_access_token
 
 
 class AuthService:

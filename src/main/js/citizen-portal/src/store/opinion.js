@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { opinionAPI, categoryAPI } from '../api'
 import { useUserStore } from './user'
+import { processOpinionMediaUrls, processOpinionsMediaUrls } from '../utils/mediaUrl'
 
 const userStore = useUserStore()
 
@@ -34,21 +35,33 @@ export const useOpinionStore = defineStore('opinion', {
     },
 
     async fetchOpinionById(id) {
+      console.log(" 阿維?")
       this.loading = true
       try {
           const bookmarkPromise = userStore.isLoggedIn
             ? opinionAPI.getBookmarkStatus(id)
             : Promise.resolve({ is_collected: false })
 
-          const [ opinionData, collectStatus ] = await Promise.all([
+          const votePromise = userStore.isLoggedIn
+            ? opinionAPI.getVoteStatus(id)
+            : Promise.resolve({ vote_type: null })
+
+          const [ opinionData, collectStatus, voteStatus ] = await Promise.all([
             opinionAPI.getById(id),
-            bookmarkPromise
+            bookmarkPromise,
+            votePromise
           ])
 
-          // 把 like/support 數量合併進 currentOpinion
+          // 處理媒體 URL（Android/iOS 需要完整 URL）
+          console.log("before media url processing:", opinionData)
+          const processedOpinion = processOpinionMediaUrls(opinionData)
+          console.log("after media url processing:", processedOpinion)
+
+          // 把 like/support 數量和用戶投票狀態合併進 currentOpinion
           this.currentOpinion = {
-            ...opinionData,
-            is_bookmarked: collectStatus.is_collected ?? false
+            ...processedOpinion,
+            is_bookmarked: collectStatus.is_collected ?? false,
+            user_vote: voteStatus.vote_type // 'like', 'support', or null
           }
 
           return this.currentOpinion
@@ -67,13 +80,35 @@ export const useOpinionStore = defineStore('opinion', {
           page_size: pageSize
         }
         const data = await opinionAPI.getBookmarked(params)
-        this.bookmarkedOpinions = data.items || []
+        this.bookmarkedOpinions = processOpinionsMediaUrls(data.items || [])
         this.bookmarkedTotal = data.total || 0
         return data
       } catch (error) {
         throw error
       } finally {
         this.bookmarkedLoading = false
+      }
+    },
+
+    async fetchMyOpinions(page = 1, pageSize = 10, status = null) {
+      this.myOpinionsLoading = true
+      try {
+        const params = {
+          page,
+          page_size: pageSize
+        }
+        if (status) {
+          params.status = status
+        }
+        const data = await opinionAPI.getMyOpinions(params)
+        // 處理媒體 URL（Android/iOS 需要完整 URL）
+        this.myOpinions = processOpinionsMediaUrls(data.items || [])
+        this.myOpinionsTotal = data.total || 0
+        return data
+      } catch (error) {
+        throw error
+      } finally {
+        this.myOpinionsLoading = false
       }
     },
 

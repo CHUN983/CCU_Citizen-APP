@@ -1,6 +1,37 @@
 # 🏙️ Citizen Portal - 市民意見前端
 
-市民參與城市規劃系統的前端應用
+市民參與城市規劃系統的跨平台應用 (Web / iOS / Android)
+
+## 📱 行動 APP 支援 (NEW!)
+
+**現在支援 Android 和 iOS APP!**
+
+基於 **Capacitor 7** 技術,一份程式碼部署到三個平台:
+- 🌐 **Web** - 瀏覽器版本
+- 🤖 **Android** - Android APP
+- 🍎 **iOS** - iOS APP
+
+### 📚 快速開始
+
+| 文件 | 說明 |
+|------|------|
+| [🚀 快速開始](./QUICK_START.md) | 5分鐘上手 APP 開發 |
+| [📘 完整開發指南](./MOBILE_APP_GUIDE.md) | 詳細技術文件 |
+| [📋 專案總結](../../MOBILE_DEVELOPMENT_SUMMARY.md) | 方案說明與資源 |
+| [📐 架構文件](../../docs/MOBILE_ARCHITECTURE.md) | 技術架構詳解 |
+
+### ⚡ 立即體驗
+
+```bash
+# Android APP
+npm run android
+
+# iOS APP (需要 macOS)
+npm run ios
+
+# Web 版本
+npm run dev
+```
 
 ## ✨ 功能特色
 
@@ -14,15 +45,25 @@
 - ✅ 意見收藏功能
 - ✅ 個人資料頁面
 - ✅ 響應式設計 (支援手機/平板/桌面)
+- ✅ **📸 相機拍照與相簿選擇** (NEW!)
+- ✅ **📱 跨平台 APP 支援** (NEW!)
+- ✅ **🖼️ 圖片壓縮與上傳** (NEW!)
 
 ## 🛠️ 技術棧
 
-- **Vue 3** - 漸進式JavaScript框架
-- **Vite** - 極速構建工具
-- **Vue Router** - 官方路由
-- **Pinia** - 狀態管理
-- **Element Plus** - UI組件庫
-- **Axios** - HTTP客戶端
+### 核心框架
+- **Vue 3.5.22** - 漸進式JavaScript框架
+- **Vite 7.1.7** - 極速構建工具
+- **Vue Router 4.6.3** - 官方路由
+- **Pinia 3.0.3** - 狀態管理
+- **Element Plus 2.11.5** - UI組件庫
+- **Axios 1.12.2** - HTTP客戶端
+
+### 跨平台支援
+- **Capacitor 7.4.4** - 原生橋接框架
+- **@capacitor/camera** - 相機功能
+- **@capacitor/filesystem** - 檔案系統
+- **@capacitor/splash-screen** - 啟動畫面
 
 ## 🚀 快速開始
 
@@ -39,23 +80,35 @@ cd /root/project/citizenApp/src/main/js/citizen-portal
 npm install
 ```
 
-### 啟動開發服務器
+### Web 開發
 
 ```bash
+# 啟動開發服務器
 npm run dev
+
+# 應用將運行在: http://localhost:5173
 ```
 
-應用將運行在: http://localhost:5174
+### 行動 APP 開發
+
+```bash
+# Android APP (需要 Android Studio)
+npm run android
+
+# iOS APP (需要 macOS 和 Xcode)
+npm run ios
+
+# 同步 Web 變更到原生平台
+npm run cap:sync
+```
 
 ### 構建生產版本
 
 ```bash
+# Web 版本
 npm run build
-```
 
-### 預覽生產構建
-
-```bash
+# 預覽構建
 npm run preview
 ```
 
@@ -63,13 +116,18 @@ npm run preview
 
 ```
 citizen-portal/
-├── src/
+├── 📱 android/            # Android 原生專案 (Capacitor)
+├── 🍎 ios/                # iOS 原生專案 (Capacitor)
+├── 🌐 src/                # Vue 3 程式碼
 │   ├── api/              # API 請求封裝
 │   │   ├── axios.js      # Axios 配置與攔截器
 │   │   └── index.js      # API 端點定義
 │   ├── components/       # 可重用組件
 │   │   ├── Header.vue    # 頂部導航
-│   │   └── Footer.vue    # 底部資訊
+│   │   ├── Footer.vue    # 底部資訊
+│   │   └── CameraUpload.vue  # 📸 相機上傳元件 (NEW!)
+│   ├── utils/            # 工具函式
+│   │   └── camera.js     # 📷 相機工具 (NEW!)
 │   ├── router/           # 路由配置
 │   │   └── index.js      # 路由定義
 │   ├── store/            # Pinia 狀態管理
@@ -79,10 +137,16 @@ citizen-portal/
 │   │   ├── Home/         # 首頁
 │   │   ├── Auth/         # 登入/註冊
 │   │   ├── Opinions/     # 意見相關頁面
-│   │   └── Profile/      # 個人資料
+│   │   ├── Profile/      # 個人資料
+│   │   └── Example/
+│   │       └── CameraDemo.vue  # 📸 相機示範 (NEW!)
 │   ├── App.vue           # 根組件
 │   └── main.js           # 入口文件
-├── public/               # 靜態資源
+├── 📦 dist/               # 建置輸出
+├── 📄 public/             # 靜態資源
+├── ⚙️ capacitor.config.json  # Capacitor 設定
+├── 📘 MOBILE_APP_GUIDE.md    # 行動 APP 開發指南
+├── 🚀 QUICK_START.md         # 快速開始指南
 ├── index.html            # HTML 模板
 ├── vite.config.js        # Vite 配置
 └── package.json          # 依賴配置
@@ -170,12 +234,25 @@ Vite 配置中已設定 API 代理，無需額外配置
 
 ## 📝 開發計畫
 
-### 即將推出
+### Phase 1: 基礎功能 ✅
+- [x] Capacitor 整合
+- [x] 相機與圖片上傳
+- [x] Android/iOS 平台支援
+- [x] 基礎文件與範例
+
+### Phase 2: 功能擴充
 - [ ] 我的意見管理
 - [ ] 意見編輯功能
+- [ ] GPS 定位功能
+- [ ] 推播通知系統
+- [ ] 離線資料同步
+
+### Phase 3: 體驗優化
 - [ ] 通知中心
 - [ ] 多語言支援
 - [ ] 暗黑模式
+- [ ] 效能優化
+- [ ] 自動化測試
 
 ## 🐛 常見問題
 

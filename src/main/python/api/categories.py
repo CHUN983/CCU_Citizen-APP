@@ -3,7 +3,7 @@ Category API routes
 """
 
 from fastapi import APIRouter, HTTPException
-from ..utils.database import get_db_cursor
+from utils.database import get_db_cursor
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 

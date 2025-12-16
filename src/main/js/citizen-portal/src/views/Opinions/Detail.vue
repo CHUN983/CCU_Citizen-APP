@@ -304,7 +304,6 @@ const handleBookmark = async () => {
 const fetchOpinion = async (id = opinionId.value) => {
   loading.value = true
   try {
-
     await opinionStore.fetchOpinionById(id)
   } catch (error) {
     ElMessage.error('載入意見失敗')

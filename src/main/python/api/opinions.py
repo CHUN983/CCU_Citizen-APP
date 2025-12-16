@@ -5,12 +5,12 @@ Opinion API routes
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from typing import Optional, List
 
-from ..models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus, OpinionWithUser
-from ..models.comment import Comment, CommentCreate
-from ..models.vote import VoteCreate
-from ..services.opinion_service import OpinionService
-from ..services.ai_content_moderation_service import AIContentModerationService
-from ..api.auth import get_current_user
+from models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus, OpinionWithUser
+from models.comment import Comment, CommentCreate
+from models.vote import VoteCreate
+from services.opinion_service import OpinionService
+from services.ai_content_moderation_service import AIContentModerationService
+from api.auth import get_current_user
 import threading
 
 router = APIRouter(prefix="/opinions", tags=["Opinions"])
@@ -39,7 +39,7 @@ async def create_opinion(
 
     if ai_moderation_enabled:
         # 使用背景線程異步執行AI審核(不阻塞response)
-        from ..utils.async_moderation import sync_process_opinion_moderation
+        from utils.async_moderation import sync_process_opinion_moderation
 
         thread = threading.Thread(
             target=sync_process_opinion_moderation,

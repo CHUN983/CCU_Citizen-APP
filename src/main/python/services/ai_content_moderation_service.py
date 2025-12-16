@@ -6,10 +6,11 @@ AI Content Moderation Service
 import os
 import json
 import time
+import requests
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
-from ..utils.database import get_db_cursor
-from ..services.moderation_service import ModerationService
+from utils.database import get_db_cursor
+from services.opinion_service import OpinionService
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -21,7 +22,8 @@ class ModerationConfig:
     MODERATION_LOGS_TABLE = "moderation_logs"
     CATEGORIES_TABLE = "categories"
     CATEGORY_KEYWORDS_TABLE = "category_keywords"
-    AUTO_CATEGORY_THRESHOLD = 70.0  # 自動分類信心度閾值
+    AUTO_CATEGORY_THRESHOLD = 60.0  # 自動分類信心度閾值
+    SIMILARITY_THRESHOLD = 0.8  # 相似度閾值
     openai_api_key = os.getenv("OPENAI_API_KEY", "")
 
 
@@ -290,7 +292,7 @@ class AIContentModerationService:
             return None, 0.0, "API key not configured"
 
         try:
-            import requests
+            
 
             # 獲取可用的分類列表
             with get_db_cursor() as cursor:
@@ -604,23 +606,15 @@ class AIContentModerationService:
     ) -> bool:
         """更新意見的審核狀態（包含真正的 status）"""
         try:
-            # 根據 AI 審核結果決定主狀態
-            if needs_manual_review:
-                final_status = "pending"
-            elif auto_moderation_status == "approved":
-                final_status = "approved"
-                ModerationService.approve_opinion(opinion_id, moderator_id=0)
-            elif auto_moderation_status == "rejected":
-                final_status = "rejected"
-                ModerationService.reject_opinion(opinion_id, reason=moderation_reason, moderator_id=0)
-            else:
-                final_status = "pending"
 
+            print(f"[Classify] Updating opinion {opinion_id} moderation status to {auto_moderation_status}, score: {category_confidence}, category: {auto_category_id}")
             where_category_update_clause = ""
             if category_confidence is not None and category_confidence >= ModerationConfig.AUTO_CATEGORY_THRESHOLD:
                 where_category_update_clause = "category_id =  %s"
             else:
                 where_category_update_clause = "category_id = COALESCE(category_id, %s)"
+
+
 
             query = f"""
                     UPDATE opinions
@@ -637,7 +631,7 @@ class AIContentModerationService:
 
             with get_db_cursor() as cursor:
                 cursor.execute(query, (
-                    final_status,
+                    auto_moderation_status,
                     auto_moderation_status,
                     auto_moderation_score,
                     auto_category_id,
@@ -652,4 +646,155 @@ class AIContentModerationService:
         except Exception as e:
             print(f"Error updating opinion moderation status: {e}")
             return False
+
+    @staticmethod
+    def pick_merge_opinions(opinion_id: int) -> Tuple[Optional[int], Optional[Dict]]:
+        """合併相似意見（標記為重複）"""
+
+        """從資料庫中找尋新意見詳細資料"""
+        try:
+            with get_db_cursor() as cursor:
+                cursor.execute("SELECT title, content, category_id, region FROM opinions WHERE id = %s", (opinion_id,))
+                owner = cursor.fetchone()
+        except Exception as e:
+            print(f"Error search opinions: {e}")
+            return None, None
+        
+        """
+        調用OpenAI API進行智能分類
+        """
+
+        api_key = ModerationConfig.openai_api_key
+        model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
+
+        # 獲取可用的候選意見列表
+        candidate_opinions = OpinionService.get_similar_opinions(
+            opinion_id, owner['title'], owner['content'], owner['category_id'], 5)
+
+        # print(f"[Merge] Found {len(candidate_opinions)} candidate opinions")
+        candidates: List[Dict] = []
+        for c in candidate_opinions:
+            candidates.append({
+                "id": c.id,
+                "title": c.title,
+                "content": c.content,
+                "category_name": c.category_name or "",
+                "region": c.region or "",
+            })
+
+        if not candidates:
+            return None, None
+        # print(f"[Merge] candidates: {candidates}")
+
+        payload = {
+            "new_opinion": {
+                "id": opinion_id,
+                "title": owner['title'],
+                "content": owner['content'],
+                "region": owner['region'],
+            },
+            "candidates": candidates,
+        }
+
+        # 構建prompt
+        user_content = f"""
+        請依照以下 JSON 輸出結果：
+
+        輸入資料：
+        {json.dumps(payload, ensure_ascii=False)}
+
+        輸出格式（僅允許此結構）：
+        {{
+        "results": [
+            {{
+            "id": 123,
+            "same_topic": true,
+            "similarity": 0.92,
+            "reason": "簡短中文說明為什麼這樣判斷"
+            }},
+            ...
+        ]
+        }}
+
+        請注意：
+        - results 的順序與 candidates 相同。
+        - similarity 為 0~1 的小數。
+        - 如果資訊明顯指向同一個具體事件，similarity 通常應該 >= 0.8 且 same_topic 為 true。
+        - 如果只是大致相似類型但不同地點或不同事件，通常 same_topic 應為 false，similarity <= 0.6。
+        - 僅輸出 JSON，且必須是有效的 JSON 格式。
+        """
+
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+
+        data = {
+            'model': model,
+            'messages': [
+                {
+                    'role': 'system',
+                    'content': """你是一個「市政案件意見合併助手」。
+
+                                你的工作是：給你一則「新的市民意見」以及多則「舊的市民意見候選」，判斷每一則舊意見和新意見之間是否屬於「同一個具體事件」或「高度重複、應合併為同一主題」。
+
+                                請用下列標準判斷：
+                                1. 「同一事件」的判準：
+                                - 指向同一個具體地點（同一條路、同一個公園、同一個路口…）
+                                - 描述的問題本質相同（例如：同一個地下道積水、同一個路口紅綠燈壞掉）
+                                - 時間範圍大致相近（同一段施工、不合理長期問題等）
+                                2. 即使文字描述不同，只要是在抱怨「同一個地方的同一個問題」，就算是同一主題。
+                                3. 如果只是大概相同類型（例如都在抱怨停車、但不同路段），則算「不同事件」，不要視為同主題。
+                                4. 如果資訊不足以判斷，請傾向標記為不同事件（same_topic=false），並在 reason 中說明不確定的點。
+
+                                你只可以使用 JSON 格式作答，不要輸出任何解說文字。"""
+                },
+                {
+                    'role': 'user',
+                    'content': user_content
+                }
+            ],
+            'temperature': 0.3,
+            'response_format': {'type': 'json_object'}
+        }
+
+        response = requests.post(
+            'https://api.openai.com/v1/chat/completions',
+            headers=headers,
+            json=data,
+            timeout=75
+        )
+
+        response.raise_for_status()
+        result_json = response.json()
+
+        # 解析模型輸出內容
+        content_str = result_json["choices"][0]["message"]["content"]
+        try:
+            parsed = json.loads(content_str)
+        except json.JSONDecodeError:
+            return None, None
+
+        results = parsed.get("results", [])
+        if not isinstance(results, list):
+            return None, None
+
+        print(f"[Merge] Candidate results: {results}")
+        # 依 same_topic + similarity 門檻篩選最佳候選
+        threshold = float(getattr(ModerationConfig, "SIMILARITY_THRESHOLD", 0.8))
+        filtered = [
+            r for r in results
+            if r.get("same_topic") and float(r.get("similarity", 0)) >= threshold
+        ]
+        if not filtered:
+            return None, None
+
+        filtered.sort(key=lambda r: float(r["similarity"]), reverse=True)
+        best = filtered[0]
+        return best.get("id"), best
+
+       
+
+        
+
 
