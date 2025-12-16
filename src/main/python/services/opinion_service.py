@@ -734,15 +734,18 @@ class OpinionService:
                     DELETE FROM opinions
                     WHERE id = %s 
                 """
+            params = (opinion_id,)
         else:
             query = """
                     DELETE FROM opinions
                     WHERE id = %s AND user_id = %s
                 """
+            params = (opinion_id, user_id)
 
+            
         try:
             with get_db_cursor() as cursor:
-                cursor.execute(query, (opinion_id, user_id))
+                cursor.execute(query, params)
                 return cursor.rowcount > 0
         except Exception as e:
             print(f"Error deleting opinion: {e}")
