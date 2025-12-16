@@ -272,7 +272,7 @@ class TestOpenAIVisionAPI:
         assert result['confidence'] == 0.0
         assert 'error' in result
 
-    @patch('services.ai_content_moderation_service.ModerationConfig.openai_api_key', '')
+    @patch('services.ai_media_moderation_service.ModerationConfig.openai_api_key', '')
     def test_vision_api_no_api_key(self, sample_image_path):
         """TC-MEDIA-018: 無 API Key 配置"""
         result = AIMediaModerationService._call_openai_vision_api(sample_image_path)
