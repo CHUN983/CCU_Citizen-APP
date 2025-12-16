@@ -388,6 +388,7 @@ jobs:
             exit 1
           fi
         env:
+          PYTHONPATH: src/main/python
           DB_HOST: 127.0.0.1
           DB_USER: root
           DB_PASSWORD: test_password
