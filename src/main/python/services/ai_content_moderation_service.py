@@ -11,7 +11,6 @@ from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
 from utils.database import get_db_cursor
 from utils.api_retry import exponential_backoff, OPENAI_RETRY_CONFIG
-from services.moderation_service import ModerationService
 from services.opinion_service import OpinionService
 from dotenv import load_dotenv
 
