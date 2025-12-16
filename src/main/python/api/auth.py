@@ -33,15 +33,22 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
 @router.post("/register", response_model=User, status_code=201)
 async def register(user_data: UserCreate):
     """Register a new user"""
-    user = AuthService.create_user(user_data)
+    try:
+        user = AuthService.create_user(user_data)
 
-    if not user:
+        if not user:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to create user"
+            )
+
+        return user
+    except ValueError as e:
+        # Handle duplicate username or email
         raise HTTPException(
             status_code=400,
-            detail="Username or email already exists"
+            detail=str(e)
         )
-
-    return user
 
 # 使用username和password登入，成功後回傳JWT token
 @router.post("/login", response_model=Token)

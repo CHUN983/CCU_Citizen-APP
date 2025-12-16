@@ -6,6 +6,7 @@ E2E 測試: 認證流程
 
 import pytest
 import requests
+import time
 
 
 @pytest.mark.system
@@ -20,7 +21,7 @@ class TestAuthenticationE2E:
         優先級: Critical
         """
         # Step 1: 註冊新用戶
-        unique_username = f"e2e_user_{int(pytest.timestamp() * 1000)}"
+        unique_username = f"e2e_user_{int(time.time() * 1000)}"
         registration_data = {
             "username": unique_username,
             "email": f"{unique_username}@test.com",
@@ -100,7 +101,6 @@ class TestAuthenticationE2E:
 
 @pytest.mark.system
 @pytest.mark.e2e
-@pytest.mark.skip(reason="需要實際的註冊端點實現")
 class TestUserRegistrationE2E:
     """用戶註冊端到端測試"""
 
