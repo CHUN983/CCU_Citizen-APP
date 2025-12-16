@@ -44,7 +44,7 @@
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="請輸入密碼 (至少6個字符)"
+            placeholder="請輸入密碼 (至少8個字符且需要大小寫與特殊字元)"
             show-password
           >
             <template #prefix>
