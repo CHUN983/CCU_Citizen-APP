@@ -1044,260 +1044,92 @@ opinion_id = create_test_opinion.id
 ### 2.1.4 系統測試 (System Testing)
 
 > **更新日期**: 2025-12-16
-> **狀態**: ✅ **框架已建立** - 21 個測試案例
-> **測試數量**: 21 tests (E2E: 15 | Performance: 7)
-
-#### **概述**
-
-系統測試驗證整個應用程式在真實環境中的行為，包含端到端測試 (E2E)、效能測試和負載測試。我們已建立完整的系統測試框架，位於 `src/test/system/` 目錄。
+> **文檔性質**: 📚 **教學指南** - 如何執行系統測試
+> **目標讀者**: 開發者、測試工程師、新成員
 
 ---
 
-#### **2.1.4.1 端對端測試 (E2E Testing)**
+## 🎯 系統測試概述
 
-**測試框架**:
-- **基礎設施**: FastAPI TestClient + requests
-- **測試文件**: `src/test/system/`
-- **狀態**: ✅ **框架已建立** (15 個測試案例)
-- **覆蓋率**: 基礎認證流程與意見系統流程
+### 什麼是系統測試?
 
-##### **測試基礎設施 (conftest.py)**
+**系統測試 (System Testing)** 是在真實或模擬環境中驗證整個應用程式的行為，確保所有組件正確協作。
 
-**核心 Fixtures**:
+**我們的系統測試包含**:
+- 🔄 **端對端測試 (E2E)**: 模擬完整用戶操作流程
+- ⚡ **效能測試**: 驗證系統響應速度與吞吐量
+- 📊 **負載測試**: 檢測系統在高負載下的穩定性
 
-1. **`fastapi_server`** (session scope)
-   - 自動啟動 FastAPI 伺服器於獨立端口 (8001)
-   - 實作健康檢查等待機制 (30秒超時)
-   - 測試完成後自動清理
-
-2. **`api_client`** (function scope)
-   - 提供 APIClient 輔助類別
-   - 支援自動認證 header 管理
-   - 封裝常用 HTTP 方法 (GET, POST, PUT, DELETE)
-
-3. **`authenticated_client`** (function scope)
-   - 預先登入的客戶端
-   - 自動處理 token 管理
-   - 簡化認證相關測試
-
-**APIClient 設計**:
-```python
-class APIClient:
-    - login(username, password)      # 登入並保存 token
-    - get_headers()                  # 自動附加認證 header
-    - get/post/put/delete(endpoint)  # RESTful API 方法
-```
+**測試框架位置**: `src/test/system/` 目錄
 
 ---
 
-##### **E2E 測試案例 - 認證流程 (test_e2e_auth_flow.py)**
+## 📁 測試框架架構
 
-**TestAuthenticationE2E** - 認證系統端到端測試
+### 目錄結構
 
-| 測試案例 | 編號 | 狀態 | 說明 |
-|---------|------|------|------|
-| 完整註冊登入流程 | TC-E2E-AUTH-001 | ✅ | 註冊 → 登入 → 獲取 token → 訪問受保護端點 |
-| 無效憑證登入失敗 | TC-E2E-AUTH-002 | ✅ | 驗證系統拒絕錯誤的用戶名/密碼 |
-| 未認證訪問受保護端點 | TC-E2E-AUTH-003 | ✅ | 驗證 401 Unauthorized 響應 |
-| Token 過期處理 | TC-E2E-AUTH-004 | ✅ | 驗證過期/無效 token 被拒絕 |
-
-**TC-E2E-AUTH-001 詳細流程**:
 ```
-步驟 1: 註冊新用戶
-  → POST /auth/register
-  → 驗證回應 200/201
-
-步驟 2: 使用憑證登入
-  → POST /auth/login
-  → 驗證獲得 access_token
-  → 驗證 token_type = "bearer"
-
-步驟 3: 使用 token 訪問個人資料
-  → GET /auth/me (with Authorization header)
-  → 驗證回應 200
-  → 驗證用戶資料正確
-
-結果: ✅ 完整流程驗證通過
+src/test/system/
+├── conftest.py                    # 測試基礎設施與共用 fixtures
+├── test_e2e_auth_flow.py          # 認證流程端對端測試
+├── test_e2e_opinion_flow.py       # 意見系統端對端測試
+└── test_performance.py            # 效能測試
 ```
 
-**TestUserRegistrationE2E** - 用戶註冊測試 (待啟用)
+### 技術堆棧
 
-| 測試案例 | 編號 | 狀態 | 說明 |
-|---------|------|------|------|
-| 重複用戶名註冊失敗 | TC-E2E-AUTH-005 | 🟡 Skip | 驗證系統拒絕重複用戶名 |
-| 弱密碼註冊失敗 | TC-E2E-AUTH-006 | 🟡 Skip | 驗證密碼強度要求 |
-
-*註: 這些測試已實作但標記為 skip，等待註冊端點完整實現後啟用*
+| 組件 | 技術選擇 | 用途 |
+|------|---------|------|
+| **測試框架** | pytest | 測試組織與執行 |
+| **HTTP 客戶端** | requests | API 請求發送 |
+| **伺服器管理** | FastAPI TestClient | 測試環境伺服器 |
+| **並發測試** | concurrent.futures | 併發負載模擬 |
 
 ---
 
-##### **E2E 測試案例 - 意見系統流程 (test_e2e_opinion_flow.py)**
+## 🚀 快速開始指南
 
-**TestOpinionPublishingE2E** - 意見發布端到端測試 (待啟用)
+### 步驟 1: 環境準備
 
-| 測試案例 | 編號 | 狀態 | 說明 |
-|---------|------|------|------|
-| 完整意見生命週期 | TC-E2E-OPINION-001 | 🟡 Skip | 創建 → 查看 → 編輯 → 刪除 |
-| 帶媒體的意見發布 | TC-E2E-OPINION-002 | 🟡 Skip | 上傳圖片 → 附加到意見 |
-| 意見審核工作流程 | TC-E2E-OPINION-003 | 🟡 Skip | 發布 → AI 審核 → 狀態更新 |
+#### **前置需求檢查**
 
-**TC-E2E-OPINION-001 詳細流程**:
-```
-步驟 1: 創建新意見
-  → POST /opinions
-  → 驗證回應 201
-  → 保存 opinion_id
+```bash
+# 檢查 Python 版本 (需要 3.8+)
+python --version
 
-步驟 2: 查看剛創建的意見
-  → GET /opinions/{opinion_id}
-  → 驗證標題、內容正確
+# 檢查 MySQL 服務狀態
+mysql --version
 
-步驟 3: 編輯意見
-  → PUT /opinions/{opinion_id}
-  → 驗證更新成功
-
-步驟 4: 驗證更新內容
-  → GET /opinions/{opinion_id}
-  → 驗證新內容正確
-
-步驟 5: 刪除意見
-  → DELETE /opinions/{opinion_id}
-  → 驗證回應 200
-
-步驟 6: 驗證意見已刪除
-  → GET /opinions/{opinion_id}
-  → 驗證回應 404
-
-預期結果: 完整生命週期無誤
-實際狀態: 🟡 待測試環境配置完成後啟用
+# 確認 FastAPI 應用可啟動
+cd /root/project/citizenApp
+python -m src.main.python.api.main
 ```
 
-**TestOpinionListingE2E** - 意見列表查詢測試 (待啟用)
+#### **安裝測試依賴**
 
-| 測試案例 | 編號 | 狀態 | 說明 |
-|---------|------|------|------|
-| 意見分頁查詢 | TC-E2E-OPINION-004 | 🟡 Skip | 驗證分頁機制正確性 |
-| 按分類篩選意見 | TC-E2E-OPINION-005 | 🟡 Skip | 驗證分類過濾功能 |
-| 意見搜索功能 | TC-E2E-OPINION-006 | 🟡 Skip | 驗證全文搜索 |
+```bash
+# 安裝核心測試庫
+pip install pytest pytest-asyncio requests
 
-**TestOpinionInteractionE2E** - 意見互動測試 (待啟用)
-
-| 測試案例 | 編號 | 狀態 | 說明 |
-|---------|------|------|------|
-| 意見點讚流程 | TC-E2E-OPINION-007 | 🟡 Skip | 點讚 → 取消點讚 → 驗證計數 |
-| 意見評論流程 | TC-E2E-OPINION-008 | 🟡 Skip | 發布評論 → 查看 → 刪除 |
-
----
-
-#### **2.1.4.2 效能測試 (Performance Testing)**
-
-**測試框架**:
-- **工具**: Python requests + concurrent.futures
-- **測試文件**: `src/test/system/test_performance.py`
-- **狀態**: ✅ **框架已建立** (7 個測試案例)
-
-##### **API 效能測試 (TestAPIPerformance)**
-
-| 測試案例 | 編號 | 目標 | 狀態 | 說明 |
-|---------|------|------|------|------|
-| 健康檢查響應時間 | TC-PERF-001 | <100ms | ✅ | 測試 /health 端點響應時間 |
-| 意見列表響應時間 | TC-PERF-002 | <500ms | ✅ | 測試分頁查詢效能 |
-| 併發請求處理 | TC-PERF-003 | 10 併發 | ✅ | 驗證系統併發處理能力 |
-
-**TC-PERF-001: 健康檢查端點響應時間**
-```python
-目標: 平均響應時間 < 100ms
-測試方法:
-  - 執行 10 次請求
-  - 記錄每次響應時間
-  - 計算平均值、中位數、最大/最小值
-
-評估指標:
-  - 平均響應時間
-  - 中位數響應時間
-  - P95 響應時間
-  - P99 響應時間
-
-通過條件: 平均響應時間 < 100ms
+# 可選: 安裝並發測試增強
+pip install pytest-xdist
 ```
 
-**TC-PERF-003: 併發請求處理**
-```python
-測試參數:
-  - 併發用戶數: 10
-  - 請求端點: /health
-  - 執行方式: ThreadPoolExecutor
+#### **配置測試資料庫**
 
-驗證項目:
-  1. 所有請求均成功 (200 OK)
-  2. 成功率 = 100%
-  3. 平均響應時間 < 1000ms
-  4. 無連接錯誤或超時
+```bash
+# 創建測試資料庫
+mysql -h 127.0.0.1 -uroot -p -e "CREATE DATABASE IF NOT EXISTS citizen_app_test"
 
-結果輸出:
-  - 成功率: X/Y
-  - 平均響應時間: Xms
-  - 最大響應時間: Xms
+# 初始化測試資料結構
+mysql -h 127.0.0.1 -uroot -p citizen_app_test < schema_complete.sql
 ```
 
 ---
 
-##### **負載測試 (TestLoadTesting)** - 待啟用
+### 步驟 2: 執行測試
 
-| 測試案例 | 編號 | 參數 | 狀態 | 說明 |
-|---------|------|------|------|------|
-| 持續負載測試 | TC-PERF-004 | 60s, 10 req/s | 🟡 Skip | 驗證長時間穩定性 |
-| 記憶體洩漏檢測 | TC-PERF-005 | 1000 requests | 🟡 Skip | 檢測記憶體使用異常 |
-
-**TC-PERF-004: 持續負載測試**
-```
-測試配置:
-  - 測試時長: 60 秒
-  - 請求速率: 10 req/s
-  - 目標端點: /health
-
-評估指標:
-  - 總請求數
-  - 成功請求數
-  - 失敗請求數
-  - 成功率 (目標: >95%)
-
-通過條件: 成功率 > 95%
-```
-
----
-
-##### **資料庫效能測試 (TestDatabasePerformance)** - 待啟用
-
-| 測試案例 | 編號 | 目標 | 狀態 | 說明 |
-|---------|------|------|------|------|
-| 意見查詢效能 | TC-PERF-006 | <200ms | 🟡 Skip | 測試大量資料查詢 |
-| 資料庫連接池 | TC-PERF-007 | 20 併發 | 🟡 Skip | 驗證連接池效率 |
-
-**TC-PERF-006: 意見查詢效能**
-```
-測試場景:
-  - 查詢前 10 頁資料 (每頁 50 條)
-  - 記錄每次查詢時間
-  - 計算平均查詢時間
-
-評估指標:
-  - 平均查詢時間 (目標: <200ms)
-  - 最小查詢時間
-  - 最大查詢時間
-  - 查詢時間穩定性
-
-優化方向:
-  - 資料庫索引優化
-  - 查詢語句優化
-  - 連接池配置調整
-```
-
----
-
-#### **2.1.4.3 系統測試執行指南**
-
-##### **本地執行系統測試**
+#### **基本執行命令**
 
 ```bash
 # 運行所有系統測試
@@ -1311,189 +1143,639 @@ pytest src/test/system/ -m performance -v
 
 # 運行特定測試文件
 pytest src/test/system/test_e2e_auth_flow.py -v
+```
 
-# 包含 skip 標記的測試（謹慎使用）
+#### **進階執行選項**
+
+```bash
+# 詳細輸出模式 (顯示每個測試的詳細資訊)
+pytest src/test/system/ -vv
+
+# 顯示本地變數 (除錯用)
+pytest src/test/system/ -l
+
+# 遇到第一個失敗就停止
+pytest src/test/system/ -x
+
+# 並行執行 (使用所有 CPU 核心)
+pytest src/test/system/ -n auto
+
+# 包含被跳過的測試 (謹慎使用)
 pytest src/test/system/ --run-skipped
 ```
 
-##### **系統測試前置需求**
+---
 
-**環境配置**:
-1. FastAPI 應用程式可正常啟動
-2. 資料庫服務運行中 (MySQL 8.0+)
-3. 測試資料已初始化
-4. 環境變數正確配置
+### 步驟 3: 理解測試輸出
 
-**依賴安裝**:
-```bash
-pip install pytest requests
-pip install pytest-asyncio  # 異步測試支援
+#### **成功的測試輸出範例**
+
+```
+src/test/system/test_e2e_auth_flow.py::TestAuthenticationE2E::test_complete_registration_and_login_flow PASSED [100%]
+
+======================== 1 passed in 2.34s ========================
 ```
 
-**測試資料準備**:
-```sql
--- 執行測試資料初始化腳本
-mysql -h 127.0.0.1 -uroot -p citizen_app_test < schema_complete.sql
+#### **失敗的測試輸出範例**
+
+```
+src/test/system/test_e2e_auth_flow.py::TestAuthenticationE2E::test_login_with_invalid_credentials FAILED [50%]
+
+======================== FAILURES ========================
+AssertionError: assert 200 == 401
+Expected 401 Unauthorized, but got 200 OK
 ```
 
 ---
 
-#### **2.1.4.4 系統測試覆蓋率分析**
+## 🔧 測試基礎設施詳解
 
-##### **當前覆蓋狀況**
+### conftest.py - 核心 Fixtures 說明
 
-| 測試類別 | 已實作 | 已啟用 | 待啟用 | 覆蓋率 |
-|---------|--------|--------|--------|--------|
-| E2E - 認證流程 | 6 | 4 | 2 | 67% |
-| E2E - 意見系統 | 8 | 0 | 8 | 0% |
-| 效能 - API 測試 | 3 | 3 | 0 | 100% |
-| 效能 - 負載測試 | 2 | 0 | 2 | 0% |
-| 效能 - 資料庫 | 2 | 0 | 2 | 0% |
-| **總計** | **21** | **7** | **14** | **33%** |
+#### **1️⃣ `fastapi_server` Fixture**
 
-##### **關鍵用戶流程覆蓋**
+**作用**: 自動啟動測試用 FastAPI 伺服器
 
-✅ **已覆蓋的流程**:
-1. 用戶註冊與登入流程
-2. Token 認證與授權
-3. API 基礎效能驗證
+**生命週期**: `session` (整個測試會話只啟動一次)
 
-🟡 **部分覆蓋的流程**:
-1. 意見發布流程 (測試已寫但未啟用)
-2. 意見互動流程 (測試已寫但未啟用)
+**功能特點**:
+- ✅ 自動啟動於獨立端口 (8001,避免與開發伺服器衝突)
+- ✅ 實作健康檢查等待機制 (最長 30 秒超時)
+- ✅ 測試完成後自動清理並關閉伺服器
 
-❌ **未覆蓋的流程**:
-1. 管理員審核流程
-2. 媒體上傳與處理
-3. 通知系統
-4. 前端 UI 互動 (需 Cypress/Playwright)
-
----
-
-#### **2.1.4.5 系統測試限制與規劃**
-
-##### **當前限制**
-
-⚠️ **測試環境限制**:
-- 部分 E2E 測試需要完整的註冊端點實現
-- 測試資料庫需要預先配置和初始化
-- 系統測試未整合到 CI/CD (計劃中)
-
-⚠️ **測試資料管理**:
-- 缺少自動化測試資料清理機制
-- 測試間可能存在資料污染風險
-- 需要實作測試資料隔離策略
-
-⚠️ **效能測試基準**:
-- 尚未建立效能基準線 (Baseline)
-- 缺少長時間運行的穩定性測試
-- 需要真實環境的效能驗證
-
-##### **短期規劃 (1-2 週)**
-
-1. **啟用待執行的 E2E 測試**
-   - 實作完整的用戶註冊端點
-   - 配置獨立的測試環境
-   - 移除 skip 標記並驗證
-
-2. **測試資料管理**
-   - 實作測試資料工廠模式
-   - 建立自動清理機制
-   - 確保測試隔離性
-
-3. **CI/CD 整合**
-   - 將系統測試加入 GitHub Actions
-   - 設置專門的系統測試作業
-   - 配置測試報告上傳
-
-##### **中期規劃 (1-2 個月)**
-
-1. **前端 E2E 測試**
-   - 引入 Cypress 或 Playwright
-   - 實作關鍵 UI 流程測試
-   - 建立視覺回歸測試
-
-2. **效能測試擴充**
-   - 建立效能基準線
-   - 實作自動化效能回歸測試
-   - 設置效能監控告警
-
-3. **負載與壓力測試**
-   - 使用 Locust 建立負載測試場景
-   - 執行壓力測試找出系統瓶頸
-   - 容量規劃與擴展策略
-
-##### **長期規劃 (3-6 個月)**
-
-1. **完整系統測試套件**
-   - 覆蓋所有關鍵用戶流程
-   - 實作混沌工程測試
-   - 建立災難恢復測試
-
-2. **測試基礎設施**
-   - 建立專用測試環境
-   - 實作分佈式測試執行
-   - 設置測試報告儀表板
-
-3. **持續改進**
-   - 定期效能基準更新
-   - 測試覆蓋率持續提升
-   - 測試執行時間優化
-
----
-
-#### **2.1.4.6 系統測試最佳實踐**
-
-##### **E2E 測試編寫規範**
-
+**使用範例**:
 ```python
-# ✅ 好的 E2E 測試範例
-@pytest.mark.e2e
-def test_complete_user_journey(api_client):
+def test_health_check(fastapi_server):
     """
-    TC-E2E-XXX: 測試描述
-    測試目標: 清楚說明測試目標
+    fastapi_server 作為依賴,確保伺服器已啟動
     """
-    # Arrange: 準備測試資料
-    user_data = create_test_user_data()
+    response = requests.get("http://localhost:8001/health")
+    assert response.status_code == 200
+```
 
-    # Act: 執行測試步驟
-    register_response = api_client.post("/auth/register", json=user_data)
-    login_response = api_client.login(user_data["username"], user_data["password"])
+---
 
-    # Assert: 驗證結果
-    assert register_response.status_code == 201
-    assert login_response.status_code == 200
+#### **2️⃣ `api_client` Fixture**
+
+**作用**: 提供便捷的 API 客戶端輔助類別
+
+**生命週期**: `function` (每個測試函數獨立實例)
+
+**APIClient 可用方法**:
+
+| 方法 | 參數 | 說明 | 回傳 |
+|------|------|------|------|
+| `login(username, password)` | 用戶名、密碼 | 登入並儲存 access_token | Response |
+| `get(endpoint, **kwargs)` | API 端點路徑 | 發送 GET 請求 (自動附加認證 header) | Response |
+| `post(endpoint, **kwargs)` | 端點、請求資料 | 發送 POST 請求 | Response |
+| `put(endpoint, **kwargs)` | 端點、更新資料 | 發送 PUT 請求 | Response |
+| `delete(endpoint, **kwargs)` | 端點 | 發送 DELETE 請求 | Response |
+| `get_headers()` | 無 | 獲取含認證的 headers | Dict |
+
+**使用範例**:
+```python
+def test_create_opinion(api_client):
+    # 步驟 1: 登入
+    login_response = api_client.login("testuser", "password123")
     assert "access_token" in login_response.json()
+
+    # 步驟 2: 創建意見 (自動附加認證 header)
+    opinion_data = {
+        "title": "測試意見",
+        "content": "這是測試內容"
+    }
+    create_response = api_client.post("/opinions", json=opinion_data)
+    assert create_response.status_code == 201
 ```
 
-##### **效能測試最佳實踐**
+---
+
+#### **3️⃣ `authenticated_client` Fixture**
+
+**作用**: 預先登入的客戶端,簡化需要認證的測試
+
+**生命週期**: `function` (每個測試函數獨立實例)
+
+**特點**:
+- ✅ 自動執行登入流程
+- ✅ 無需手動呼叫 `login()` 方法
+- ✅ 適用於所有需要認證的 API 測試
+
+**使用範例**:
+```python
+def test_get_my_profile(authenticated_client):
+    """
+    使用預先登入的客戶端,無需手動登入
+    """
+    response = authenticated_client.get("/auth/me")
+    assert response.status_code == 200
+    assert "username" in response.json()
+```
+
+**對比**: 使用 `api_client` vs `authenticated_client`
+
+| 場景 | 使用 `api_client` | 使用 `authenticated_client` |
+|------|------------------|----------------------------|
+| 測試登入流程 | ✅ 推薦 (需要測試登入行為) | ❌ 不適用 |
+| 測試受保護端點 | ⚠️ 需手動呼叫 `login()` | ✅ 推薦 (已預先登入) |
+| 測試公開端點 | ✅ 可用 | ✅ 可用 (但不需要認證) |
+
+---
+
+## 📚 端對端測試 (E2E Testing) 詳解
+
+### 什麼是 E2E 測試?
+
+**端對端測試 (End-to-End Testing)** 模擬真實用戶的完整操作流程,驗證系統各組件協作是否正確。
+
+**E2E 測試 vs 其他測試**:
+
+| 測試類型 | 範圍 | 示例 |
+|---------|------|------|
+| **單元測試** | 單一函數/方法 | 測試密碼雜湊函數 |
+| **整合測試** | 多個組件交互 | 測試 Service + DAO 協作 |
+| **E2E 測試** | 完整用戶流程 | 註冊 → 登入 → 創建意見 → 查看 |
+
+---
+
+### 測試檔案 1: test_e2e_auth_flow.py
+
+**測試目標**: 驗證認證系統的完整用戶流程
+
+#### **測試案例總覽**
+
+| 測試案例編號 | 測試名稱 | 狀態 | 涵蓋流程 |
+|-------------|---------|------|---------|
+| TC-E2E-AUTH-001 | 完整註冊登入流程 | ✅ 啟用 | 註冊 → 登入 → 訪問保護端點 |
+| TC-E2E-AUTH-002 | 無效憑證登入失敗 | ✅ 啟用 | 錯誤密碼 → 401 錯誤 |
+| TC-E2E-AUTH-003 | 未認證訪問失敗 | ✅ 啟用 | 無 token → 401 錯誤 |
+| TC-E2E-AUTH-004 | Token 過期處理 | ✅ 啟用 | 過期 token → 401 錯誤 |
+| TC-E2E-AUTH-005 | 重複用戶名註冊失敗 | 🟡 待啟用 | 重複註冊 → 409 錯誤 |
+| TC-E2E-AUTH-006 | 弱密碼註冊失敗 | 🟡 待啟用 | 弱密碼 → 400 錯誤 |
+
+---
+
+#### **📖 教學範例: TC-E2E-AUTH-001 完整註冊登入流程**
+
+**測試目標**: 驗證用戶從註冊到訪問受保護資源的完整流程
+
+**步驟拆解**:
 
 ```python
-# ✅ 好的效能測試範例
+@pytest.mark.e2e
+def test_complete_registration_and_login_flow(api_client):
+    """
+    TC-E2E-AUTH-001: 完整註冊登入流程測試
+
+    流程: 註冊新用戶 → 使用憑證登入 → 獲取 token → 訪問受保護端點
+    """
+
+    # ===== 步驟 1: 註冊新用戶 =====
+    register_data = {
+        "username": f"testuser_{int(time.time())}",  # 使用時間戳避免重複
+        "email": f"test_{int(time.time())}@example.com",
+        "password": "SecurePass123!"
+    }
+
+    register_response = api_client.post("/auth/register", json=register_data)
+
+    # 驗證註冊成功
+    assert register_response.status_code in [200, 201], \
+        f"註冊失敗: {register_response.text}"
+
+    # ===== 步驟 2: 使用註冊的憑證登入 =====
+    login_response = api_client.login(
+        username=register_data["username"],
+        password=register_data["password"]
+    )
+
+    # 驗證登入成功並取得 token
+    assert login_response.status_code == 200
+    login_data = login_response.json()
+    assert "access_token" in login_data, "回應中缺少 access_token"
+    assert login_data["token_type"] == "bearer"
+
+    # ===== 步驟 3: 使用 token 訪問受保護端點 =====
+    me_response = api_client.get("/auth/me")  # APIClient 自動附加 token
+
+    # 驗證能正確獲取用戶資料
+    assert me_response.status_code == 200
+    user_data = me_response.json()
+    assert user_data["username"] == register_data["username"]
+
+    print("✅ 完整流程測試通過")
+```
+
+**學習重點**:
+1. 使用 `time.time()` 生成唯一用戶名,避免測試衝突
+2. `api_client.login()` 會自動儲存 token
+3. 後續請求會自動附加 Authorization header
+4. 每個步驟都有明確的驗證斷言
+
+---
+
+#### **📖 教學範例: TC-E2E-AUTH-002 無效憑證測試**
+
+**測試目標**: 確保系統正確拒絕錯誤的登入憑證
+
+```python
+@pytest.mark.e2e
+def test_login_with_invalid_credentials(api_client):
+    """
+    TC-E2E-AUTH-002: 測試使用錯誤密碼登入
+
+    預期行為: 系統應回傳 401 Unauthorized
+    """
+
+    # 嘗試使用錯誤的憑證登入
+    login_data = {
+        "username": "nonexistent_user",
+        "password": "wrong_password"
+    }
+
+    response = api_client.post("/auth/login", data=login_data)
+
+    # 驗證系統正確拒絕
+    assert response.status_code == 401, \
+        "系統應拒絕無效憑證並回傳 401"
+
+    error_detail = response.json()
+    assert "detail" in error_detail or "error" in error_detail
+```
+
+**學習重點**:
+- 負面測試 (Negative Testing) 同樣重要
+- 驗證系統的安全性機制正常運作
+- 確保錯誤訊息不洩漏敏感資訊
+
+---
+
+#### **🔍 如何執行認證流程測試**
+
+```bash
+# 只執行認證流程測試
+pytest src/test/system/test_e2e_auth_flow.py -v
+
+# 執行特定測試案例
+pytest src/test/system/test_e2e_auth_flow.py::TestAuthenticationE2E::test_complete_registration_and_login_flow -v
+
+# 詳細輸出模式
+pytest src/test/system/test_e2e_auth_flow.py -vv -s
+```
+
+---
+
+### 測試檔案 2: test_e2e_opinion_flow.py
+
+**測試目標**: 驗證意見管理系統的完整用戶流程
+
+#### **測試案例總覽 (目前為待啟用狀態)**
+
+| 測試類別 | 測試案例 | 編號 | 狀態 | 涵蓋流程 |
+|---------|---------|------|------|---------|
+| **意見發布** | 完整意見生命週期 | TC-E2E-OPINION-001 | 🟡 待啟用 | 創建 → 查看 → 編輯 → 刪除 |
+| **意見發布** | 帶媒體的意見發布 | TC-E2E-OPINION-002 | 🟡 待啟用 | 上傳圖片 → 附加意見 |
+| **意見發布** | 意見審核工作流程 | TC-E2E-OPINION-003 | 🟡 待啟用 | 發布 → AI 審核 → 更新狀態 |
+| **意見查詢** | 意見分頁查詢 | TC-E2E-OPINION-004 | 🟡 待啟用 | 驗證分頁機制 |
+| **意見查詢** | 按分類篩選意見 | TC-E2E-OPINION-005 | 🟡 待啟用 | 驗證分類過濾 |
+| **意見互動** | 意見點讚流程 | TC-E2E-OPINION-007 | 🟡 待啟用 | 點讚 → 取消 → 驗證計數 |
+| **意見互動** | 意見評論流程 | TC-E2E-OPINION-008 | 🟡 待啟用 | 發布評論 → 查看 → 刪除 |
+
+**💡 註**: 這些測試已實作但標記為 `skip`,等待以下條件滿足後啟用:
+- ✅ 意見 CRUD API 端點完整實現
+- ✅ 測試資料庫環境配置完成
+- ✅ 測試資料初始化腳本就緒
+
+#### **🔍 如何執行意見系統測試**
+
+```bash
+# 查看意見系統測試 (包含 skip 的測試)
+pytest src/test/system/test_e2e_opinion_flow.py -v
+
+# 強制執行被跳過的測試 (需要環境已配置)
+pytest src/test/system/test_e2e_opinion_flow.py --run-skipped -v
+```
+
+---
+
+## ⚡ 效能測試 (Performance Testing) 詳解
+
+### 什麼是效能測試?
+
+**效能測試 (Performance Testing)** 驗證系統在不同負載下的響應速度、吞吐量和資源使用情況。
+
+**測試文件**: `src/test/system/test_performance.py`
+
+---
+
+### 測試檔案 3: test_performance.py
+
+#### **效能測試類別總覽**
+
+| 測試類別 | 測試案例 | 編號 | 效能目標 | 狀態 |
+|---------|---------|------|---------|------|
+| **API 效能** | 健康檢查響應時間 | TC-PERF-001 | < 100ms | ✅ 啟用 |
+| **API 效能** | 意見列表響應時間 | TC-PERF-002 | < 500ms | ✅ 啟用 |
+| **併發測試** | 併發請求處理 | TC-PERF-003 | 10 併發 | ✅ 啟用 |
+| **負載測試** | 持續負載測試 | TC-PERF-004 | 60s, 10 req/s | 🟡 待啟用 |
+| **負載測試** | 記憶體洩漏檢測 | TC-PERF-005 | 1000 requests | 🟡 待啟用 |
+| **資料庫** | 意見查詢效能 | TC-PERF-006 | < 200ms | 🟡 待啟用 |
+| **資料庫** | 資料庫連接池 | TC-PERF-007 | 20 併發 | 🟡 待啟用 |
+
+---
+
+#### **📖 教學範例: TC-PERF-001 API 響應時間測試**
+
+**測試目標**: 驗證 API 端點響應速度符合效能要求
+
+```python
+import time
+import statistics
+import pytest
+
 @pytest.mark.performance
-def test_api_response_time(api_client):
+def test_health_endpoint_response_time(api_client):
     """
-    TC-PERF-XXX: API 響應時間測試
-    目標: < 100ms
+    TC-PERF-001: 健康檢查端點響應時間測試
+
+    效能目標: 平均響應時間 < 100ms
     """
+
     response_times = []
 
-    for _ in range(10):
-        start = time.time()
+    # 執行 10 次請求並記錄響應時間
+    for i in range(10):
+        start_time = time.time()
         response = api_client.get("/health")
-        elapsed = (time.time() - start) * 1000
+        elapsed = (time.time() - start_time) * 1000  # 轉換為毫秒
+
+        assert response.status_code == 200
         response_times.append(elapsed)
 
+    # 計算統計指標
     avg_time = statistics.mean(response_times)
+    median_time = statistics.median(response_times)
+    max_time = max(response_times)
+    min_time = min(response_times)
 
-    # 記錄詳細結果
+    # 輸出測試結果
+    print(f"\n===== 效能測試結果 =====")
     print(f"平均響應時間: {avg_time:.2f}ms")
-    print(f"P95: {statistics.quantiles(response_times, n=20)[18]:.2f}ms")
+    print(f"中位數響應時間: {median_time:.2f}ms")
+    print(f"最大響應時間: {max_time:.2f}ms")
+    print(f"最小響應時間: {min_time:.2f}ms")
 
     # 驗證效能目標
     assert avg_time < 100, f"響應時間 {avg_time:.2f}ms 超過 100ms 目標"
 ```
+
+**學習重點**:
+- 使用 `time.time()` 測量響應時間
+- 使用 `statistics` 模組計算統計指標
+- 明確的效能斷言與錯誤訊息
+
+---
+
+#### **📖 教學範例: TC-PERF-003 併發請求測試**
+
+**測試目標**: 驗證系統能正確處理併發請求
+
+```python
+import concurrent.futures
+import pytest
+
+@pytest.mark.performance
+def test_concurrent_requests(api_client):
+    """
+    TC-PERF-003: 併發請求處理測試
+
+    測試參數: 10 個併發請求
+    """
+
+    def make_request():
+        """發送單個請求並回傳結果"""
+        response = api_client.get("/health")
+        return response.status_code == 200
+
+    # 使用 ThreadPoolExecutor 模擬併發請求
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(make_request) for _ in range(10)]
+        results = [f.result() for f in concurrent.futures.as_completed(futures)]
+
+    # 驗證所有請求均成功
+    success_count = sum(results)
+    total_count = len(results)
+    success_rate = (success_count / total_count) * 100
+
+    print(f"\n併發測試結果: {success_count}/{total_count} 成功")
+    print(f"成功率: {success_rate:.1f}%")
+
+    assert success_rate == 100, "並發測試應 100% 成功"
+```
+
+**學習重點**:
+- 使用 `concurrent.futures.ThreadPoolExecutor` 模擬併發
+- 測試系統在多用戶同時訪問下的穩定性
+- 計算成功率並驗證
+
+---
+
+#### **🔍 如何執行效能測試**
+
+```bash
+# 執行所有效能測試
+pytest src/test/system/test_performance.py -v
+
+# 執行特定效能測試
+pytest src/test/system/test_performance.py::TestAPIPerformance::test_health_endpoint_response_time -v
+
+# 顯示詳細輸出 (包含 print 語句)
+pytest src/test/system/test_performance.py -v -s
+
+# 只執行已啟用的效能測試 (排除 skip)
+pytest src/test/system/ -m performance -v
+```
+
+---
+
+## 📊 測試覆蓋率分析
+
+### 當前測試狀態統計
+
+| 測試類別 | 已實作 | 已啟用 | 待啟用 | 啟用率 |
+|---------|--------|--------|--------|--------|
+| **E2E - 認證流程** | 6 | 4 | 2 | 67% |
+| **E2E - 意見系統** | 8 | 0 | 8 | 0% |
+| **效能 - API 測試** | 3 | 3 | 0 | 100% |
+| **效能 - 負載測試** | 2 | 0 | 2 | 0% |
+| **效能 - 資料庫** | 2 | 0 | 2 | 0% |
+| **總計** | **21** | **7** | **14** | **33%** |
+
+### 用戶流程覆蓋狀況
+
+| 狀態 | 流程類別 | 說明 |
+|------|---------|------|
+| ✅ **已覆蓋** | 認證系統 | 用戶註冊、登入、Token 認證 |
+| ✅ **已覆蓋** | API 效能 | 基礎響應時間與併發測試 |
+| 🟡 **部分覆蓋** | 意見系統 | 測試已實作但未啟用 |
+| ❌ **未覆蓋** | 審核系統 | 管理員審核流程 |
+| ❌ **未覆蓋** | 媒體系統 | 媒體上傳與處理 |
+| ❌ **未覆蓋** | 通知系統 | 通知發送與接收 |
+
+---
+
+## ⚠️ 已知限制與注意事項
+
+### 測試環境限制
+
+| 限制項目 | 影響 | 因應方式 |
+|---------|------|---------|
+| 部分測試標記為 skip | E2E 意見系統測試無法執行 | 等待 API 端點完整實現後啟用 |
+| 測試資料庫需手動配置 | 初次執行需額外設置步驟 | 參考「環境準備」章節 |
+| 未整合 CI/CD | 無自動化測試執行 | 計劃中,短期內完成整合 |
+
+### 測試資料管理
+
+⚠️ **注意事項**:
+- 測試間可能存在資料污染風險
+- 需手動清理測試資料
+- 建議使用獨立的測試資料庫
+
+**改進計劃**:
+- 實作測試資料工廠模式 (Test Data Factory)
+- 建立自動清理機制 (Teardown Fixtures)
+- 確保測試隔離性 (Transaction Rollback)
+
+---
+
+## 🗺️ 未來規劃路線圖
+
+### 📅 短期目標 (1-2 週)
+
+- [ ] 啟用所有待執行的 E2E 測試
+- [ ] 實作測試資料自動清理機制
+- [ ] 將系統測試整合到 GitHub Actions CI/CD
+
+### 📅 中期目標 (1-2 個月)
+
+- [ ] 引入 Cypress/Playwright 進行前端 E2E 測試
+- [ ] 建立效能測試基準線 (Baseline)
+- [ ] 使用 Locust 建立負載測試場景
+
+### 📅 長期目標 (3-6 個月)
+
+- [ ] 完整覆蓋所有關鍵用戶流程
+- [ ] 建立專用測試環境與測試報告儀表板
+- [ ] 實作混沌工程測試 (Chaos Engineering)
+
+## 💡 測試編寫最佳實踐
+
+### 測試命名規範
+
+**好的測試命名應該**:
+- ✅ 清楚描述測試目的
+- ✅ 使用一致的命名模式
+- ✅ 包含測試案例編號 (TC-XXX-YYY)
+
+```python
+# ✅ 推薦的測試命名
+def test_complete_registration_and_login_flow()  # 描述清楚
+def test_login_with_invalid_credentials()        # 說明測試場景
+def test_health_endpoint_response_time()         # 明確測試目標
+
+# ❌ 不推薦的測試命名
+def test_1()                                      # 無意義
+def test_auth()                                   # 太籠統
+def test_something()                              # 不清楚
+```
+
+### AAA 測試模式
+
+**遵循 Arrange-Act-Assert 模式**:
+
+```python
+@pytest.mark.e2e
+def test_user_can_create_opinion(authenticated_client):
+    # Arrange: 準備測試資料
+    opinion_data = {
+        "title": "測試意見",
+        "content": "這是測試內容",
+        "category_id": 1
+    }
+
+    # Act: 執行操作
+    response = authenticated_client.post("/opinions", json=opinion_data)
+
+    # Assert: 驗證結果
+    assert response.status_code == 201
+    created_opinion = response.json()
+    assert created_opinion["title"] == opinion_data["title"]
+    assert "id" in created_opinion
+```
+
+### 測試隔離原則
+
+**確保每個測試獨立運行**:
+
+```python
+# ✅ 好的做法: 每個測試使用獨立資料
+def test_create_user(api_client):
+    unique_username = f"user_{int(time.time())}"
+    # 測試邏輯...
+
+# ❌ 不好的做法: 測試間共享資料
+TEST_USERNAME = "shared_user"  # 可能造成測試衝突
+```
+
+### Pytest 標記使用
+
+**使用標記 (markers) 分類測試**:
+
+```python
+# E2E 測試標記
+@pytest.mark.e2e
+def test_complete_flow():
+    pass
+
+# 效能測試標記
+@pytest.mark.performance
+def test_response_time():
+    pass
+
+# 慢速測試標記
+@pytest.mark.slow
+def test_heavy_operation():
+    pass
+```
+
+**執行特定標記的測試**:
+```bash
+# 只執行 E2E 測試
+pytest -m e2e
+
+# 排除慢速測試
+pytest -m "not slow"
+
+# 組合條件
+pytest -m "e2e and not slow"
+```
+
+---
+
+## 🎓 學習資源
+
+### 推薦閱讀
+
+- 📖 [Pytest 官方文檔](https://docs.pytest.org/)
+- 📖 [FastAPI 測試指南](https://fastapi.tiangolo.com/tutorial/testing/)
+- 📖 [RESTful API 測試最佳實踐](https://www.sisense.com/blog/rest-api-testing-strategy-what-exactly-should-you-test/)
+
+### 下一步學習
+
+1. **進階 Pytest 功能**: Fixtures、Parametrize、Plugins
+2. **Mock 與 Stub**: 使用 `pytest-mock` 模擬外部依賴
+3. **測試覆蓋率**: 使用 `pytest-cov` 生成覆蓋率報告
+4. **CI/CD 整合**: 將測試加入 GitHub Actions 工作流程
 
 ---
 
