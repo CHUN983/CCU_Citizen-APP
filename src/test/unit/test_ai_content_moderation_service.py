@@ -262,6 +262,7 @@ class TestKeywordClassification:
 # ==================== 測試類別 3: OpenAI API Mock 測試 ====================
 
 @pytest.mark.no_db
+@patch('services.ai_content_moderation_service.ModerationConfig.openai_api_key', 'test-fake-api-key')
 class TestOpenAIModerationAPI:
     """OpenAI API Mock 測試"""
 

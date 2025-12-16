@@ -103,12 +103,20 @@ jobs:
           npm run test:coverage
         continue-on-error: true
 
+      - name: 🧹 Clean up invalid artifact filenames
+        if: always()
+        run: |
+          # 移除包含冒號的文件（Windows/NTFS 不支持）
+          find src/main/js/admin-dashboard/coverage -name '*:*' -type f -delete 2>/dev/null || true
+
       - name: 📤 Upload coverage to artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: frontend-coverage
-          path: src/main/js/admin-dashboard/coverage/
+          path: |
+            src/main/js/admin-dashboard/coverage/coverage-summary.json
+            src/main/js/admin-dashboard/coverage/lcov.info
           retention-days: 7
 
   # ==========================================
@@ -164,6 +172,12 @@ jobs:
           cd src/main/js/citizen-portal
           npm run test:coverage
         continue-on-error: true
+
+      - name: 🧹 Clean up invalid artifact filenames
+        if: always()
+        run: |
+          # 移除包含冒號的文件（Windows/NTFS 不支持）
+          find src/main/js/citizen-portal/coverage -name '*:*' -type f -delete 2>/dev/null || true
 
       - name: 📤 Upload coverage to artifacts
         uses: actions/upload-artifact@v4

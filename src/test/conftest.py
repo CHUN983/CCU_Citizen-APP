@@ -56,9 +56,12 @@ def test_db_connection_pool():
 
     # 使用 subprocess 執行 MySQL 命令來確保穩定性
     try:
-        # 建立測試資料庫
+        # 建立測試資料庫（使用 TCP 連接而非 socket）
         subprocess.run([
-            "mysql", "-u", TEST_DB_CONFIG["user"],
+            "mysql",
+            "-h", TEST_DB_CONFIG["host"],
+            "-P", str(TEST_DB_CONFIG["port"]),
+            "-u", TEST_DB_CONFIG["user"],
             f"-p{TEST_DB_CONFIG['password']}",
             "-e", f"CREATE DATABASE IF NOT EXISTS {TEST_DB_CONFIG['database']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
         ], check=True, capture_output=True, text=True)
@@ -76,7 +79,10 @@ def test_db_connection_pool():
 
             with open(sql_file, 'rb') as f:
                 result = subprocess.run([
-                    "mysql", "-u", TEST_DB_CONFIG["user"],
+                    "mysql",
+                    "-h", TEST_DB_CONFIG["host"],
+                    "-P", str(TEST_DB_CONFIG["port"]),
+                    "-u", TEST_DB_CONFIG["user"],
                     f"-p{TEST_DB_CONFIG['password']}",
                     "--force",  # 忽略重複鍵錯誤等提醒
                     TEST_DB_CONFIG["database"]

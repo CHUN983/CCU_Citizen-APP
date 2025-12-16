@@ -167,6 +167,7 @@ class TestImageProcessing:
 # ==================== 測試類別 2: OpenAI Vision API Mock 測試 ====================
 
 @pytest.mark.no_db
+@patch('services.ai_media_moderation_service.ModerationConfig.openai_api_key', 'test-fake-api-key')
 class TestOpenAIVisionAPI:
     """OpenAI Vision API Mock 測試"""
 
