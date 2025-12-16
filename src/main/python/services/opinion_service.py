@@ -749,11 +749,16 @@ class OpinionService:
         Only the comment owner can delete their own comment
         Returns True if deleted, False if not found or unauthorized
         """
-        query = """
-            UPDATE comments
-            SET is_deleted = TRUE
-            WHERE id = %s AND user_id = %s AND is_deleted = FALSE
-        """
+        if user_id ==0 or user_id ==1:
+            query = """
+                    DELETE FROM opinions
+                    WHERE id = %s 
+                """
+        else:
+            query = """
+                    DELETE FROM opinions
+                    WHERE id = %s AND user_id = %s
+                """
 
         try:
             with get_db_cursor() as cursor:
