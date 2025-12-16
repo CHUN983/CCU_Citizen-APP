@@ -25,12 +25,16 @@ export const useNotificationStore = defineStore('notification', {
       try {
         const params = unreadOnly ? { unread_only: true } : {}
         const data = await notificationAPI.getList(params)
-        this.notifications = data || []
+        // 確保 notifications 始終是數組
+        this.notifications = Array.isArray(data) ? data : []
         this.unreadCount = this.notifications.filter(n => !n.is_read).length
         return data
       } catch (error) {
         console.error('Failed to fetch notifications:', error)
-        throw error
+        // 發生錯誤時，確保 notifications 是空數組
+        this.notifications = []
+        this.unreadCount = 0
+        // 不要 throw error，避免中斷應用
       } finally {
         this.loading = false
       }

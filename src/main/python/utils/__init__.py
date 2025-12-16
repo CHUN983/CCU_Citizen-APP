@@ -8,6 +8,12 @@ from .security import (
     decode_access_token,
     get_user_from_token
 )
+from .api_retry import (
+    exponential_backoff,
+    retry_with_backoff,
+    RetryConfig,
+    OPENAI_RETRY_CONFIG
+)
 
 __all__ = [
     'get_db_connection',
@@ -17,5 +23,9 @@ __all__ = [
     'verify_password',
     'create_access_token',
     'decode_access_token',
-    'get_user_from_token'
+    'get_user_from_token',
+    'exponential_backoff',
+    'retry_with_backoff',
+    'RetryConfig',
+    'OPENAI_RETRY_CONFIG'
 ]

@@ -208,8 +208,9 @@ class TestOpinionRetrieval:
         assert data["id"] == opinion_id
         assert data["title"] == create_test_opinion.title
         assert data["content"] == create_test_opinion.content
-        assert "vote_count" in data
-        assert "comment_count" in data
+        assert "upvotes" in data, "應包含讚成票數"
+        assert "downvotes" in data, "應包含反對票數"
+        assert "comment_count" in data, "應包含留言數"
 
     def test_get_opinion_detail_not_found(self, test_client: TestClient):
         """
@@ -641,3 +642,403 @@ class TestOpinionIntegration:
         assert response.status_code == 200
         # 期望查詢時間小於 2 秒
         assert (end_time - start_time) < 2.0, "查詢時間過長"
+
+
+class TestOpinionUserQueries:
+    """用戶意見查詢測試類別"""
+
+    def test_get_bookmarked_opinions(
+        self,
+        test_client: TestClient,
+        auth_headers_user,
+        create_test_opinion
+    ):
+        """
+        TC-OPIN-016: 獲取用戶收藏的意見列表
+        測試目標: 驗證用戶可以獲取自己收藏的意見
+        優先級: High
+        """
+        opinion_id = create_test_opinion.id
+
+        # 先收藏意見
+        collect_response = test_client.post(
+            f"/opinions/{opinion_id}/collect",
+            headers=auth_headers_user
+        )
+        assert collect_response.status_code == 200
+
+        # 獲取收藏列表
+        response = test_client.get(
+            "/opinions/collect",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "items" in data
+        assert "total" in data
+        assert data["total"] >= 1
+        # 驗證收藏的意見在列表中
+        opinion_ids = [item["id"] for item in data["items"]]
+        assert opinion_id in opinion_ids
+
+    def test_get_my_opinions(
+        self,
+        test_client: TestClient,
+        auth_headers_user,
+        create_test_opinion
+    ):
+        """
+        TC-OPIN-017: 獲取用戶自己創建的意見列表
+        測試目標: 驗證用戶可以獲取自己創建的所有意見
+        優先級: High
+        """
+        opinion_id = create_test_opinion.id
+
+        # 獲取我的意見列表
+        response = test_client.get(
+            "/opinions/my-opinions",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "items" in data
+        assert "total" in data
+        assert data["total"] >= 1
+        # 驗證創建的意見在列表中
+        opinion_ids = [item["id"] for item in data["items"]]
+        assert opinion_id in opinion_ids
+
+    def test_get_my_opinions_with_status_filter(
+        self,
+        test_client: TestClient,
+        auth_headers_user,
+        create_test_opinion
+    ):
+        """
+        TC-OPIN-018: 按狀態過濾用戶的意見
+        測試目標: 驗證可以按狀態過濾用戶自己的意見
+        優先級: Medium
+        """
+        # 獲取待審核的意見
+        response = test_client.get(
+            "/opinions/my-opinions?status=pending",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "items" in data
+
+
+class TestOpinionCommentRetrieval:
+    """意見留言查詢測試類別"""
+
+    def test_get_opinion_comments(
+        self,
+        test_client: TestClient,
+        auth_headers_user,
+        create_test_opinion
+    ):
+        """
+        TC-OPIN-019: 獲取意見的留言列表
+        測試目標: 驗證可以獲取指定意見的所有留言
+        優先級: High
+        """
+        opinion_id = create_test_opinion.id
+
+        # 先添加一個留言
+        comment_response = test_client.post(
+            f"/opinions/{opinion_id}/comments",
+            json={"content": "這是一個測試留言"},
+            headers=auth_headers_user
+        )
+        assert comment_response.status_code == 201
+
+        # 獲取留言列表
+        response = test_client.get(
+            f"/opinions/{opinion_id}/comments",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+        # 驗證留言內容
+        assert any(comment["content"] == "這是一個測試留言" for comment in data)
+
+    def test_get_comments_with_limit(
+        self,
+        test_client: TestClient,
+        auth_headers_user,
+        create_test_opinion
+    ):
+        """
+        TC-OPIN-020: 限制返回的留言數量
+        測試目標: 驗證可以限制返回的留言數量
+        優先級: Medium
+        """
+        opinion_id = create_test_opinion.id
+
+        # 添加多個留言
+        for i in range(5):
+            test_client.post(
+                f"/opinions/{opinion_id}/comments",
+                json={"content": f"測試留言 {i}"},
+                headers=auth_headers_user
+            )
+
+        # 獲取有限數量的留言
+        response = test_client.get(
+            f"/opinions/{opinion_id}/comments?limit=3",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) <= 3
+
+    def test_get_comments_for_nonexistent_opinion(
+        self,
+        test_client: TestClient,
+        auth_headers_user
+    ):
+        """
+        TC-OPIN-021: 獲取不存在意見的留言
+        測試目標: 驗證查詢不存在的意見留言時返回 404
+        優先級: Medium
+        """
+        non_existent_id = 999999
+
+        response = test_client.get(
+            f"/opinions/{non_existent_id}/comments",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 404
+
+
+class TestOpinionStatusQueries:
+    """意見狀態查詢測試類別"""
+
+    def test_get_vote_status(
+        self,
+        test_client: TestClient,
+        auth_headers_user,
+        create_test_opinion
+    ):
+        """
+        TC-OPIN-022: 獲取用戶對意見的投票狀態
+        測試目標: 驗證可以查詢用戶對特定意見的投票狀態
+        優先級: High
+        """
+        opinion_id = create_test_opinion.id
+
+        # 先投票
+        vote_response = test_client.post(
+            f"/opinions/{opinion_id}/vote",
+            json={"vote_type": "support"},
+            headers=auth_headers_user
+        )
+        assert vote_response.status_code == 200
+
+        # 獲取投票狀態
+        response = test_client.get(
+            f"/opinions/{opinion_id}/vote",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "vote_type" in data
+        assert data["vote_type"] in ["support", "oppose", None]
+
+    def test_get_vote_status_for_nonexistent_opinion(
+        self,
+        test_client: TestClient,
+        auth_headers_user
+    ):
+        """
+        TC-OPIN-023: 獲取不存在意見的投票狀態
+        測試目標: 驗證查詢不存在意見的投票狀態時返回 404
+        優先級: Medium
+        """
+        non_existent_id = 999999
+
+        response = test_client.get(
+            f"/opinions/{non_existent_id}/vote",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 404
+
+    def test_get_collect_status(
+        self,
+        test_client: TestClient,
+        auth_headers_user,
+        create_test_opinion
+    ):
+        """
+        TC-OPIN-024: 獲取意見的收藏狀態
+        測試目標: 驗證可以查詢用戶是否收藏了特定意見
+        優先級: High
+        """
+        opinion_id = create_test_opinion.id
+
+        # 先收藏
+        collect_response = test_client.post(
+            f"/opinions/{opinion_id}/collect",
+            headers=auth_headers_user
+        )
+        assert collect_response.status_code == 200
+
+        # 獲取收藏狀態
+        response = test_client.get(
+            f"/opinions/{opinion_id}/collect",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "is_collected" in data
+        assert data["is_collected"] is True
+
+    def test_get_collect_status_not_collected(
+        self,
+        test_client: TestClient,
+        auth_headers_user,
+        create_test_opinion
+    ):
+        """
+        TC-OPIN-025: 獲取未收藏意見的狀態
+        測試目標: 驗證未收藏的意見返回 false
+        優先級: Medium
+        """
+        opinion_id = create_test_opinion.id
+
+        # 直接獲取收藏狀態 (未收藏)
+        response = test_client.get(
+            f"/opinions/{opinion_id}/collect",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "is_collected" in data
+        assert data["is_collected"] is False
+
+    def test_get_collect_status_for_nonexistent_opinion(
+        self,
+        test_client: TestClient,
+        auth_headers_user
+    ):
+        """
+        TC-OPIN-026: 獲取不存在意見的收藏狀態
+        測試目標: 驗證查詢不存在意見的收藏狀態時返回 404
+        優先級: Medium
+        """
+        non_existent_id = 999999
+
+        response = test_client.get(
+            f"/opinions/{non_existent_id}/collect",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 404
+
+
+class TestOpinionDeletion:
+    """意見刪除測試類別"""
+
+    def test_delete_own_opinion(
+        self,
+        test_client: TestClient,
+        auth_headers_user,
+        create_test_opinion
+    ):
+        """
+        TC-OPIN-027: 刪除自己的意見
+        測試目標: 驗證用戶可以刪除自己創建的意見
+        優先級: High
+        """
+        opinion_id = create_test_opinion.id
+
+        # 執行刪除
+        response = test_client.delete(
+            f"/opinions/{opinion_id}",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+
+        # 驗證意見已被刪除
+        get_response = test_client.get(f"/opinions/{opinion_id}")
+        assert get_response.status_code == 404
+
+    def test_delete_nonexistent_opinion(
+        self,
+        test_client: TestClient,
+        auth_headers_user
+    ):
+        """
+        TC-OPIN-028: 刪除不存在的意見
+        測試目標: 驗證刪除不存在的意見時返回 404
+        優先級: Medium
+        """
+        non_existent_id = 999999
+
+        response = test_client.delete(
+            f"/opinions/{non_existent_id}",
+            headers=auth_headers_user
+        )
+
+        assert response.status_code == 404
+
+    def test_delete_others_opinion(
+        self,
+        test_client: TestClient,
+        auth_headers_user,
+        create_test_opinion
+    ):
+        """
+        TC-OPIN-029: 嘗試刪除他人的意見
+        測試目標: 驗證用戶無法刪除他人創建的意見
+        優先級: Critical
+        """
+        opinion_id = create_test_opinion.id
+
+        # 創建另一個用戶
+        register_response = test_client.post(
+            "/auth/register",
+            json={
+                "username": "other_user",
+                "email": "other@example.com",
+                "password": "OtherPassword123!",
+                "role": "citizen"
+            }
+        )
+
+        if register_response.status_code == 201:
+            # 登入另一個用戶
+            login_response = test_client.post(
+                "/auth/login",
+                json={
+                    "username": "other_user",
+                    "password": "OtherPassword123!"
+                }
+            )
+            other_token = login_response.json()["access_token"]
+            other_headers = {"Authorization": f"Bearer {other_token}"}
+
+            # 嘗試刪除他人的意見
+            response = test_client.delete(
+                f"/opinions/{opinion_id}",
+                headers=other_headers
+            )
+
+            # 應該失敗 (404 或 403)
+            assert response.status_code in [403, 404]

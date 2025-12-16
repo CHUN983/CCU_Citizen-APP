@@ -64,6 +64,9 @@ pip install -r requirements.txt
 # 3. 啟動 FastAPI 服務
 $env:PYTHONPATH="src/main/python"
 python -m uvicorn src.main.python.core.app:app --reload --host 0.0.0.0 --port 8000
+#由於新增了https的通道，目的讓手機也能連到FastAPI 服務，因此使用以下語法，如果沒用wsl的話，使用上面的方法。
+python -m uvicorn src.main.python.core.app:app --host 0.0.0.0 --port 8000  --ssl-keyfile localhost-key.pem --ssl-certfile localhost.pem
+
 ```
 
 **後端服務地址：**
@@ -319,6 +322,60 @@ Each language directory follows consistent structure:
 - **20+** API endpoints
 - **5** git commits
 - **100%** MVP requirements met
+
+## 🧪 Testing & Quality Assurance
+
+### 測試狀態概覽
+
+| 測試類型 | 測試數量 | 通過率 | 狀態 |
+|---------|---------|--------|------|
+| **後端單元測試** | 55 | 100% | ✅ 全部通過 |
+| **後端整合測試** | 97 | 83.5% | 🟡 部分通過 |
+| **前端單元測試** | 11 | 100% | ✅ 全部通過 |
+| **前端 E2E 測試** | 13 | 100% | ✅ 全部通過 |
+| **總計** | **176** | **91.5%** | 🟢 良好 |
+
+### CI/CD 自動化測試
+
+✅ **GitHub Actions 已配置**
+- Backend Unit Tests (Python) - ✅ 通過
+- Frontend Tests (admin-dashboard) - ✅ 通過
+- Citizen Portal Tests - ✅ 通過
+- Integration Tests - 🟡 部分通過 (資料庫初始化問題)
+
+### 程式碼覆蓋率
+
+| 項目 | 覆蓋率 | 狀態 |
+|------|--------|------|
+| **整體後端** | 47% | 🟡 持續改善 |
+| Models 模組 | 100% | ✅ 完全覆蓋 |
+| 核心模組 | 80% | ✅ 高覆蓋 |
+| API 模組 | 35% | 🔴 待改善 |
+
+### 測試文檔
+
+- **[測試儀表板](docs/testing/TESTING_DASHBOARD.md)** - 完整測試狀態與統計
+- **[測試執行報告](docs/testing/TEST_EXECUTION_REPORT.md)** - 詳細執行結果分析
+- **[測試案例總覽](docs/testing/COMPREHENSIVE_TEST_REPORT.md)** - 所有測試案例清單
+
+### 執行測試
+
+```bash
+# 執行後端單元測試
+pytest src/test/unit/ -v
+
+# 執行後端整合測試
+pytest src/test/integration/ -v
+
+# 執行前端測試 (admin-dashboard)
+cd src/main/js/admin-dashboard && npm test
+
+# 執行前端測試 (citizen-portal)
+cd src/main/js/citizen-portal && npm test
+
+# 生成覆蓋率報告
+pytest src/test/ --cov=src/main/python --cov-report=html
+```
 
 ## 🔜 Next Steps
 

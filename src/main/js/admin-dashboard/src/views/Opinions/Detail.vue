@@ -20,6 +20,10 @@
             <el-icon><Document /></el-icon>
             <span>意見管理</span>
           </el-menu-item>
+          <el-menu-item index="/history">
+            <el-icon><List /></el-icon>
+            <span>操作紀錄</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -200,6 +204,8 @@ const handleApprove = async () => {
       type: 'warning'
     })
 
+
+
     await opinionAPI.approveOpinion(opinion.value.id)
     ElMessage.success('核准成功！')
     await fetchOpinionDetail()
@@ -270,8 +276,11 @@ const formatDate = (dateString) => {
 }
 
 const getMediaUrl = (media) => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-  return `${baseUrl}/media/files/${media.media_type}/${media.file_path.split('/').pop()}`
+  // 使用 /api 前綴讓請求走 Vite 代理（避免 CORS 和 HTTPS 證書問題）
+  // 後端返回的 media.url 格式為 "uploads/image/xxx.jpg"
+  // 需要轉換為 API 路徑 "/api/media/files/image/xxx.jpg"
+  const filename = media.file_path.split('/').pop()
+  return `/api/media/files/${media.media_type}/${filename}`
 }
 
 const imageMediaList = computed(() => {

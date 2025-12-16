@@ -5,13 +5,8 @@ Main FastAPI application for Citizen Urban Planning Participation System
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# 使用絕對導入以支持測試環境
-try:
-    # 當作為模組導入時使用相對導入
-    from api import auth, opinions, notifications, moderation, media, categories
-except ImportError:
-    # 當作為獨立腳本或測試時使用絕對導入
-    from ..api import auth, opinions, notifications, moderation, media, categories
+# 使用簡單絕對導入（套件已安裝在 src/main/python）
+from api import auth, opinions, notifications, moderation, media, categories
 
 # Create FastAPI app
 app = FastAPI(

@@ -6,14 +6,14 @@ import os
 import uuid
 import shutil
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Union
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import FileResponse
 from PIL import Image
-from ..models.opinion import OpinionMedia, MediaType
-#from ..utils.security import get_current_user
-from ..api.auth import get_current_user
-from ..models.user import User
+from models.opinion import OpinionMedia, MediaType
+#from utils.security import get_current_user
+from api.auth import get_current_user
+from models.user import User, UserRole
 
 router = APIRouter(prefix="/media", tags=["media"])
 
@@ -210,7 +210,12 @@ async def get_media_file(media_type: str, filename: str):
     - **media_type**: Type of media (image, video, audio)
     - **filename**: Name of the file
     """
-    file_path = UPLOAD_DIR / media_type / filename
+    # Convert media type to plural form to match directory structure
+    # Database stores: "image", "video", "audio" (singular)
+    # Directories are: "images", "videos", "audio" (plural for image/video)
+    media_type_dir = media_type + 's' if media_type in ['image', 'video'] else media_type
+
+    file_path = UPLOAD_DIR / media_type_dir / filename
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
@@ -233,6 +238,18 @@ async def get_thumbnail(filename: str):
     return FileResponse(thumbnail_path)
 
 
+def _get_user_role(user: Union[User, dict]) -> Optional[str]:
+    """Safely extract角色字串，兼容 dict 與 Pydantic 模型."""
+    if isinstance(user, dict):
+        role = user.get("role")
+    else:
+        role = getattr(user, "role", None)
+
+    if isinstance(role, UserRole):
+        return role.value
+    return role
+
+
 @router.delete("/files/{media_type}/{filename}", status_code=200)
 async def delete_media_file(
     media_type: str,
@@ -245,8 +262,8 @@ async def delete_media_file(
     - **media_type**: Type of media (image, video, audio)
     - **filename**: Name of the file to delete
     """
-    # Check if user has permission (admin or moderator)
-    if current_user.role not in ["admin", "moderator"]:
+    role = _get_user_role(current_user)
+    if role not in ["admin", "moderator"]:
         raise HTTPException(status_code=403, detail="Not authorized to delete files")
 
     file_path = UPLOAD_DIR / media_type / filename

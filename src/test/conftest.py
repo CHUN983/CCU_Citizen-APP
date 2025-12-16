@@ -52,55 +52,50 @@ def test_db_connection_pool():
     作用域: session - 整個測試會話只建立一次
     """
     from utils.database import set_test_connection_pool
+    import subprocess
 
-    # 首先連接到 MySQL server (不指定資料庫) 以建立測試資料庫
+    # 使用 subprocess 執行 MySQL 命令來確保穩定性
     try:
-        conn = mysql.connector.connect(
-            host=TEST_DB_CONFIG["host"],
-            port=TEST_DB_CONFIG["port"],
-            user=TEST_DB_CONFIG["user"],
-            password=TEST_DB_CONFIG["password"]
-        )
-        cursor = conn.cursor()
+        # 建立測試資料庫（使用 TCP 連接而非 socket）
+        subprocess.run([
+            "mysql",
+            "-h", TEST_DB_CONFIG["host"],
+            "-P", str(TEST_DB_CONFIG["port"]),
+            "-u", TEST_DB_CONFIG["user"],
+            f"-p{TEST_DB_CONFIG['password']}",
+            "-e", f"CREATE DATABASE IF NOT EXISTS {TEST_DB_CONFIG['database']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+        ], check=True, capture_output=True, text=True)
 
-        # 建立測試資料庫
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {TEST_DB_CONFIG['database']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-        conn.commit()
-        cursor.close()
-        conn.close()
+        # 使用完整的 schema 文件（包含所有表結構和 AI 審核功能）
+        config_dir = project_root / "src/main/resources/config"
+        schema_file = config_dir / "schema_complete.sql"
 
-        # 重新連接到測試資料庫
-        conn = mysql.connector.connect(
-            host=TEST_DB_CONFIG["host"],
-            port=TEST_DB_CONFIG["port"],
-            user=TEST_DB_CONFIG["user"],
-            password=TEST_DB_CONFIG["password"],
-            database=TEST_DB_CONFIG["database"]  # 直接連接到測試資料庫
-        )
-        cursor = conn.cursor()
+        if not schema_file.exists():
+            raise FileNotFoundError(f"SQL file not found: {schema_file}")
 
-        # 讀取並執行 schema
-        schema_file = project_root / "src/main/resources/config/schema.sql"
-        with open(schema_file, 'r', encoding='utf-8') as f:
-            schema_sql = f.read()
+        with open(schema_file, 'rb') as f:
+            result = subprocess.run([
+                "mysql",
+                "-h", TEST_DB_CONFIG["host"],
+                "-P", str(TEST_DB_CONFIG["port"]),
+                "-u", TEST_DB_CONFIG["user"],
+                f"-p{TEST_DB_CONFIG['password']}",
+                "--force",  # 忽略重複鍵錯誤等提醒
+                TEST_DB_CONFIG["database"]
+            ], stdin=f, capture_output=True, text=True)
 
-        # 分割並執行每個 SQL 語句
-        statements = [s.strip() for s in schema_sql.split(';') if s.strip()]
-        for statement in statements:
-            if statement and not statement.startswith('--'):
-                try:
-                    cursor.execute(statement)
-                except mysql.connector.Error as e:
-                    # 忽略 "already exists" 和 "Duplicate entry" 錯誤
-                    if "already exists" not in str(e) and "Duplicate entry" not in str(e):
-                        print(f"Warning executing statement: {e}")
+        if result.returncode != 0:
+            stderr_lower = result.stderr.lower()
+            if "duplicate entry" not in stderr_lower and "already exists" not in stderr_lower:
+                print(f"Schema execution warnings/errors ({schema_file.name}):\n{result.stderr}")
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+        print(f"✅ Test database '{TEST_DB_CONFIG['database']}' initialized successfully")
 
-    except mysql.connector.Error as e:
-        print(f"Error setting up test database: {e}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error setting up test database:")
+        print(f"Return code: {e.returncode}")
+        print(f"Stdout: {e.stdout}")
+        print(f"Stderr: {e.stderr}")
         raise
 
     # 建立連接池
@@ -119,28 +114,23 @@ def test_db_connection_pool():
     # 恢復為 production 連接池
     set_test_connection_pool(None)
 
-    # 清理: 刪除測試資料庫
-    try:
-        conn = mysql.connector.connect(
-            host=TEST_DB_CONFIG["host"],
-            port=TEST_DB_CONFIG["port"],
-            user=TEST_DB_CONFIG["user"],
-            password=TEST_DB_CONFIG["password"]
-        )
-        cursor = conn.cursor()
-        cursor.execute(f"DROP DATABASE IF EXISTS {TEST_DB_CONFIG['database']}")
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except mysql.connector.Error as e:
-        print(f"Error cleaning up test database: {e}")
+    # 注意: 不再自動刪除測試資料庫，保留以便調試
+    # 如需清理，手動執行: DROP DATABASE citizen_app_test;
+    print(f"ℹ️  Test database '{TEST_DB_CONFIG['database']}' preserved for debugging")
 
 
 @pytest.fixture(scope="function", autouse=True)
-def cleanup_test_data(test_db_connection_pool):
+def cleanup_test_data(request):
     """
     自動清理測試資料 (在每個測試前後執行)
     """
+    if request.node.get_closest_marker("no_db"):
+        # 單元測試不需要資料庫，直接略過清理步驟
+        yield
+        return
+
+    test_db_connection_pool = request.getfixturevalue("test_db_connection_pool")
+
     def clean_tables():
         connection = test_db_connection_pool.get_connection()
         cursor = connection.cursor()
@@ -348,6 +338,41 @@ def create_test_admin(test_db_connection, test_admin_data):
 
     # 將字典轉換為可以用屬性存取的物件
     return SimpleNamespace(**admin) if admin else None
+
+
+@pytest.fixture(scope="function")
+def create_test_moderator(test_db_connection, test_moderator_data):
+    """
+    建立測試審核員並返回用戶物件
+    """
+    from utils.security import hash_password
+
+    cursor = test_db_connection.cursor(dictionary=True)
+
+    # 插入審核員
+    insert_sql = """
+        INSERT INTO users (username, email, password_hash, role, is_active)
+        VALUES (%s, %s, %s, %s, %s)
+    """
+    cursor.execute(insert_sql, (
+        test_moderator_data["username"],
+        test_moderator_data["email"],
+        hash_password(test_moderator_data["password"]),
+        test_moderator_data["role"],
+        True
+    ))
+    test_db_connection.commit()
+
+    # 獲取插入的審核員 ID
+    moderator_id = cursor.lastrowid
+
+    # 查詢並返回審核員資料
+    cursor.execute("SELECT * FROM users WHERE id = %s", (moderator_id,))
+    moderator = cursor.fetchone()
+    cursor.close()
+
+    # 將字典轉換為可以用屬性存取的物件
+    return SimpleNamespace(**moderator) if moderator else None
 
 
 @pytest.fixture(scope="function")

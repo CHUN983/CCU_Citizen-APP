@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { opinionAPI, categoryAPI } from '../api'
 import { useUserStore } from './user'
+import { processOpinionMediaUrls, processOpinionsMediaUrls } from '@/utils/mediaUrl'
 
 const userStore = useUserStore()
 
@@ -14,7 +15,11 @@ export const useOpinionStore = defineStore('opinion', {
 
     bookmarkedOpinions: [],
     bookmarkedTotal: 0,
-    bookmarkedLoading: false
+    bookmarkedLoading: false,
+
+    myOpinions: [],
+    myOpinionsTotal: 0,
+    myOpinionsLoading: false
   }),
 
   actions: {
@@ -22,7 +27,8 @@ export const useOpinionStore = defineStore('opinion', {
       this.loading = true
       try {
         const data = await opinionAPI.getList(params)
-        this.opinions = data.items || []
+        // 處理媒體 URL（Android/iOS 需要完整 URL）
+        this.opinions = processOpinionsMediaUrls(data.items || [])
         this.total = data.total || 0
 
         return data
@@ -40,15 +46,24 @@ export const useOpinionStore = defineStore('opinion', {
             ? opinionAPI.getBookmarkStatus(id)
             : Promise.resolve({ is_collected: false })
 
-          const [ opinionData, collectStatus ] = await Promise.all([
+          const votePromise = userStore.isLoggedIn
+            ? opinionAPI.getVoteStatus(id)
+            : Promise.resolve({ vote_type: null })
+
+          const [ opinionData, collectStatus, voteStatus ] = await Promise.all([
             opinionAPI.getById(id),
-            bookmarkPromise
+            bookmarkPromise,
+            votePromise
           ])
 
-          // 把 like/support 數量合併進 currentOpinion
+          // 處理媒體 URL（Android/iOS 需要完整 URL）
+          const processedOpinion = processOpinionMediaUrls(opinionData)
+
+          // 把 like/support 數量和用戶投票狀態合併進 currentOpinion
           this.currentOpinion = {
-            ...opinionData,
-            is_bookmarked: collectStatus.is_collected ?? false
+            ...processedOpinion,
+            is_bookmarked: collectStatus.is_collected ?? false,
+            user_vote: voteStatus.vote_type // 'like', 'support', or null
           }
 
           return this.currentOpinion
@@ -67,13 +82,36 @@ export const useOpinionStore = defineStore('opinion', {
           page_size: pageSize
         }
         const data = await opinionAPI.getBookmarked(params)
-        this.bookmarkedOpinions = data.items || []
+        // 處理媒體 URL（Android/iOS 需要完整 URL）
+        this.bookmarkedOpinions = processOpinionsMediaUrls(data.items || [])
         this.bookmarkedTotal = data.total || 0
         return data
       } catch (error) {
         throw error
       } finally {
         this.bookmarkedLoading = false
+      }
+    },
+
+    async fetchMyOpinions(page = 1, pageSize = 10, status = null) {
+      this.myOpinionsLoading = true
+      try {
+        const params = {
+          page,
+          page_size: pageSize
+        }
+        if (status) {
+          params.status = status
+        }
+        const data = await opinionAPI.getMyOpinions(params)
+        // 處理媒體 URL（Android/iOS 需要完整 URL）
+        this.myOpinions = processOpinionsMediaUrls(data.items || [])
+        this.myOpinionsTotal = data.total || 0
+        return data
+      } catch (error) {
+        throw error
+      } finally {
+        this.myOpinionsLoading = false
       }
     },
 
@@ -133,6 +171,30 @@ export const useOpinionStore = defineStore('opinion', {
       try {
         const data = await categoryAPI.getList()
         this.categories = data.categories || []
+        return data
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async deleteOpinion(id) {
+      try {
+        const data = await opinionAPI.delete(id)
+
+        // Remove from myOpinions list
+        const index = this.myOpinions.findIndex(op => op.id === id)
+        if (index !== -1) {
+          this.myOpinions.splice(index, 1)
+          this.myOpinionsTotal -= 1
+        }
+
+        // Also remove from bookmarkedOpinions if present
+        const bookmarkIndex = this.bookmarkedOpinions.findIndex(op => op.id === id)
+        if (bookmarkIndex !== -1) {
+          this.bookmarkedOpinions.splice(bookmarkIndex, 1)
+          this.bookmarkedTotal -= 1
+        }
+
         return data
       } catch (error) {
         throw error

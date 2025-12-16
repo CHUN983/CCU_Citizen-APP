@@ -205,6 +205,7 @@ onUnmounted(() => {
   cursor: pointer;
   font-size: 20px;
   font-weight: bold;
+  flex-shrink: 0;
 }
 
 .title {
@@ -228,6 +229,34 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 15px;
+  flex-shrink: 0;
+}
+
+/* 手機版響應式設計 - 簡化為只顯示 App Icon */
+@media (max-width: 768px) {
+  .header-container {
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .logo {
+    font-size: 18px;
+    gap: 8px;
+  }
+
+  .logo .el-icon {
+    font-size: 24px !important;
+  }
+
+  .title {
+    font-size: 16px;
+  }
+
+  /* 手機版隱藏導航選單和使用者區域，改用底部導航 */
+  .nav-menu,
+  .user-section {
+    display: none;
+  }
 }
 
 .notification-badge {

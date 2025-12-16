@@ -43,7 +43,170 @@
               </el-button>
             </div>
           </template>
-          <el-empty description="功能開發中..." />
+
+          <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+            <el-tab-pane label="已通過" name="approved">
+              <div v-loading="myOpinionsLoading">
+                <el-empty
+                  v-if="!myOpinionsLoading && approvedOpinions.length === 0"
+                  description="目前沒有已通過的意見"
+                />
+
+                <div v-else class="opinion-list">
+                  <div
+                    v-for="op in approvedOpinions"
+                    :key="op.id"
+                    class="opinion-item"
+                    @click="$router.push(`/opinions/${op.id}`)"
+                  >
+                    <div class="opinion-header">
+                      <h3 class="opinion-title">{{ op.title }}</h3>
+                      <div class="opinion-header-actions">
+                        <el-tag type="success" size="small">已通過</el-tag>
+                        <el-button
+                          type="danger"
+                          size="small"
+                          text
+                          @click.stop="handleDeleteOpinion(op.id, op.title)"
+                        >
+                          <el-icon><Delete /></el-icon>
+                          刪除
+                        </el-button>
+                      </div>
+                    </div>
+                    <p class="opinion-content">{{ op.content }}</p>
+                    <div class="opinion-meta">
+                      <el-tag size="small">{{ op.category_name }}</el-tag>
+                      <span class="stats">
+                        <el-icon><View /></el-icon>
+                        {{ op.view_count || 0 }}
+                      </span>
+                      <span class="stats">
+                        <el-icon><ChatDotRound /></el-icon>
+                        {{ op.comment_count || 0 }}
+                      </span>
+                      <span class="stats">
+                        <el-icon><Star /></el-icon>
+                        {{ op.upvotes || 0 }}
+                      </span>
+                      <span class="date">{{ formatDate(op.created_at) }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 分頁 -->
+                  <div class="pagination" v-if="myOpinionsTotal > myOpinionsPageSize">
+                    <el-pagination
+                      v-model:current-page="myOpinionsCurrentPage"
+                      :page-size="myOpinionsPageSize"
+                      :total="myOpinionsTotal"
+                      layout="total, prev, pager, next"
+                      @current-change="handleMyOpinionsPageChange"
+                    />
+                  </div>
+                </div>
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="審核中" name="pending">
+              <div v-loading="myOpinionsLoading">
+                <el-empty
+                  v-if="!myOpinionsLoading && pendingOpinions.length === 0"
+                  description="目前沒有審核中的意見"
+                />
+
+                <div v-else class="opinion-list">
+                  <div
+                    v-for="op in pendingOpinions"
+                    :key="op.id"
+                    class="opinion-item"
+                    @click="$router.push(`/opinions/${op.id}`)"
+                  >
+                    <div class="opinion-header">
+                      <h3 class="opinion-title">{{ op.title }}</h3>
+                      <div class="opinion-header-actions">
+                        <el-tag type="warning" size="small">審核中</el-tag>
+                        <el-button
+                          type="danger"
+                          size="small"
+                          text
+                          @click.stop="handleDeleteOpinion(op.id, op.title)"
+                        >
+                          <el-icon><Delete /></el-icon>
+                          刪除
+                        </el-button>
+                      </div>
+                    </div>
+                    <p class="opinion-content">{{ op.content }}</p>
+                    <div class="opinion-meta">
+                      <el-tag size="small">{{ op.category_name }}</el-tag>
+                      <span class="date">{{ formatDate(op.created_at) }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 分頁 -->
+                  <div class="pagination" v-if="myOpinionsTotal > myOpinionsPageSize">
+                    <el-pagination
+                      v-model:current-page="myOpinionsCurrentPage"
+                      :page-size="myOpinionsPageSize"
+                      :total="myOpinionsTotal"
+                      layout="total, prev, pager, next"
+                      @current-change="handleMyOpinionsPageChange"
+                    />
+                  </div>
+                </div>
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="已拒絕" name="rejected">
+              <div v-loading="myOpinionsLoading">
+                <el-empty
+                  v-if="!myOpinionsLoading && rejectedOpinions.length === 0"
+                  description="目前沒有已拒絕的意見"
+                />
+
+                <div v-else class="opinion-list">
+                  <div
+                    v-for="op in rejectedOpinions"
+                    :key="op.id"
+                    class="opinion-item"
+                    @click="$router.push(`/opinions/${op.id}`)"
+                  >
+                    <div class="opinion-header">
+                      <h3 class="opinion-title">{{ op.title }}</h3>
+                      <div class="opinion-header-actions">
+                        <el-tag type="danger" size="small">已拒絕</el-tag>
+                        <el-button
+                          type="danger"
+                          size="small"
+                          text
+                          @click.stop="handleDeleteOpinion(op.id, op.title)"
+                        >
+                          <el-icon><Delete /></el-icon>
+                          刪除
+                        </el-button>
+                      </div>
+                    </div>
+                    <p class="opinion-content">{{ op.content }}</p>
+                    <div class="opinion-meta">
+                      <el-tag size="small">{{ op.category_name }}</el-tag>
+                      <span class="date">{{ formatDate(op.created_at) }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 分頁 -->
+                  <div class="pagination" v-if="myOpinionsTotal > myOpinionsPageSize">
+                    <el-pagination
+                      v-model:current-page="myOpinionsCurrentPage"
+                      :page-size="myOpinionsPageSize"
+                      :total="myOpinionsTotal"
+                      layout="total, prev, pager, next"
+                      @current-change="handleMyOpinionsPageChange"
+                    />
+                  </div>
+                </div>
+              </div>
+            </el-tab-pane>
+          </el-tabs>
         </el-card>
         <el-card>
           <template #header>
@@ -72,6 +235,23 @@
                 </p>
                 <div class="bookmark-meta">
                   <el-tag size="small">{{ op.category_name }}</el-tag>
+
+                  <!-- tags -->
+                  <template v-if="op.tags?.length">
+                    <el-tag
+                      v-for="tag in op.tags"
+                      :key="tag"
+                      size="small"
+                      type="info"
+                      style="margin-left:6px"
+                    >
+                      {{ tag }}
+                    </el-tag>
+                  </template>
+
+                  <el-tag size="small" :type="getStatusType(op.status)">
+                    {{ getStatusText(op.status) }}
+                  </el-tag>
                   <span class="author">
                     <el-icon><UserFilled /></el-icon>
                     {{ op.username || '匿名' }}
@@ -104,7 +284,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../../store/user'
 import { useOpinionStore } from '../../store/opinion'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const opinionStore = useOpinionStore()
@@ -113,13 +294,87 @@ const bookmarks = computed(() => opinionStore.bookmarkedOpinions)
 const bookmarksLoading = computed(() => opinionStore.bookmarkedLoading)
 const bookmarksTotal = computed(() => opinionStore.bookmarkedTotal)
 
+// 我的意見相關
+const myOpinionsLoading = computed(() => opinionStore.myOpinionsLoading)
+const myOpinionsTotal = computed(() => opinionStore.myOpinionsTotal)
+const activeTab = ref('approved')
+const myOpinionsCurrentPage = ref(1)
+const myOpinionsPageSize = ref(10)
+
+// 根據當前標籤頁過濾意見
+const approvedOpinions = computed(() =>
+  opinionStore.myOpinions.filter(op => op.status === 'approved')
+)
+
+const pendingOpinions = computed(() =>
+  opinionStore.myOpinions.filter(op => op.status === 'pending')
+)
+
+const rejectedOpinions = computed(() =>
+  opinionStore.myOpinions.filter(op => op.status === 'rejected')
+)
+
 // 分頁控制
 const currentPage = ref(1)
 const pageSize = ref(5)
 
 const user = computed(() => userStore.user)
 
+const fetchMyOpinions = async () => {
+  try {
+    let status = 'approved'
+    if (activeTab.value === 'pending') {
+      status = 'pending'
+    } else if (activeTab.value === 'rejected') {
+      status = 'rejected'
+    }
 
+    await opinionStore.fetchMyOpinions(
+      myOpinionsCurrentPage.value,
+      myOpinionsPageSize.value,
+      status
+    )
+  } catch (e) {
+    console.error('載入我的意見失敗', e)
+    ElMessage.error('載入我的意見失敗')
+  }
+}
+
+const handleTabChange = (tabName) => {
+  activeTab.value = tabName
+  myOpinionsCurrentPage.value = 1
+  fetchMyOpinions()
+}
+
+const handleMyOpinionsPageChange = (page) => {
+  myOpinionsCurrentPage.value = page
+  fetchMyOpinions()
+}
+
+const handleDeleteOpinion = async (opinionId, opinionTitle) => {
+  try {
+    await ElMessageBox.confirm(
+      `確定要刪除意見「${opinionTitle}」嗎？此操作無法復原，且會同時刪除所有相關的留言和投票。`,
+      '刪除意見',
+      {
+        confirmButtonText: '確定刪除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    await opinionStore.deleteOpinion(opinionId)
+    ElMessage.success('意見已成功刪除')
+
+    // Refresh opinion list
+    await fetchMyOpinions()
+
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.detail || '刪除意見失敗')
+    }
+  }
+}
 
 const fetchBookmarks = async () => {
   try {
@@ -133,6 +388,30 @@ const fetchBookmarks = async () => {
 const handlePageChange = (page) => {
   currentPage.value = page
   fetchBookmarks()
+}
+
+const getStatusType = (status) => {
+  const typeMap = {
+    'pending': 'warning',
+    'approved': 'success',
+    'rejected': 'danger',
+    'under_review': 'info',
+    'in_progress': 'primary',
+    'completed': 'success'
+  }
+  return typeMap[status] || 'info'
+}
+
+const getStatusText = (status) => {
+  const statusMap = {
+    'pending': '待審核',
+    'approved': '已通過',
+    'rejected': '已拒絕',
+    'under_review': '審核中',
+    'in_progress': '處理中',
+    'completed': '已完成'
+  }
+  return statusMap[status] || status
 }
 
 const getRoleType = (role) => {
@@ -167,6 +446,7 @@ onMounted(async () => {
   }
 
   if (userStore.isLoggedIn) {
+    await fetchMyOpinions()
     await fetchBookmarks()
   }
 })
@@ -216,5 +496,105 @@ onMounted(async () => {
   border-color: #409eff;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+}
+
+.bookmark-content {
+  color: #606266;
+  font-size: 14px;
+  margin: 0 0 10px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.bookmark-meta {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #909399;
+}
+
+.opinion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.opinion-item {
+  padding: 20px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: white;
+}
+
+.opinion-item:hover {
+  border-color: #409eff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.opinion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.opinion-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.opinion-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+  color: #303133;
+}
+
+.opinion-content {
+  margin: 10px 0;
+  color: #606266;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.opinion-meta {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 15px;
+  color: #909399;
+  font-size: 14px;
+}
+
+.opinion-meta .stats {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.opinion-meta .date {
+  margin-left: auto;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
 }
 </style>

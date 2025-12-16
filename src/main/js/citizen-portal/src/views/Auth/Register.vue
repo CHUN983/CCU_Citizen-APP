@@ -44,7 +44,7 @@
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="請輸入密碼 (至少6個字符)"
+            placeholder="請輸入密碼 (至少8個字符且需要大小寫與特殊字元)"
             show-password
           >
             <template #prefix>
@@ -147,7 +147,7 @@ const rules = {
   ],
   password: [
     { required: true, message: '請輸入密碼', trigger: 'blur' },
-    { min: 6, message: '密碼長度至少 6 個字符', trigger: 'blur' }
+    { min: 6, message: '密碼至少 8 個字符且需要大小寫與特殊字元', trigger: 'blur' }
   ],
   confirmPassword: [
     { required: true, message: '請再次輸入密碼', trigger: 'blur' },

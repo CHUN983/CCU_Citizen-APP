@@ -4,9 +4,9 @@ Authentication API routes
 
 from fastapi import APIRouter, HTTPException, Depends, Header
 from typing import Optional
-from ..models.user import User, UserCreate, UserLogin, Token
-from ..services.auth_service import AuthService
-from ..utils.security import get_user_from_token
+from models.user import User, UserCreate, UserLogin, Token
+from services.auth_service import AuthService
+from utils.security import get_user_from_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -33,15 +33,22 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
 @router.post("/register", response_model=User, status_code=201)
 async def register(user_data: UserCreate):
     """Register a new user"""
-    user = AuthService.create_user(user_data)
+    try:
+        user = AuthService.create_user(user_data)
 
-    if not user:
+        if not user:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to create user"
+            )
+
+        return user
+    except ValueError as e:
+        # Handle duplicate username or email
         raise HTTPException(
             status_code=400,
-            detail="Username or email already exists"
+            detail=str(e)
         )
-
-    return user
 
 # 使用username和password登入，成功後回傳JWT token
 @router.post("/login", response_model=Token)

@@ -3,9 +3,9 @@ Authentication service
 """
 
 from typing import Optional
-from ..models.user import User, UserCreate, UserLogin, UserInDB, Token
-from ..utils.database import get_db_cursor
-from ..utils.security import hash_password, verify_password, create_access_token
+from models.user import User, UserCreate, UserLogin, UserInDB, Token
+from utils.database import get_db_cursor
+from utils.security import hash_password, verify_password, create_access_token
 
 
 class AuthService:
@@ -21,7 +21,21 @@ class AuthService:
 
         Returns:
             Created user or None if username/email exists
+
+        Raises:
+            ValueError: If username or email already exists
         """
+        # Check if username already exists
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id FROM users WHERE username = %s", (user_data.username,))
+            if cursor.fetchone():
+                raise ValueError("Username already exists")
+
+            # Check if email already exists
+            cursor.execute("SELECT id FROM users WHERE email = %s", (user_data.email,))
+            if cursor.fetchone():
+                raise ValueError("Email already exists")
+
         password_hash = hash_password(user_data.password)
 
         query = """

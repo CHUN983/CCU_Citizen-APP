@@ -3,15 +3,15 @@ Opinion service for managing citizen submissions
 """
 
 from typing import List, Optional
-from ..models.opinion import (
+from models.opinion import (
     Opinion, OpinionCreate, OpinionUpdate, OpinionWithUser,
     OpinionList, OpinionStatus
 )
-from ..models.comment import Comment, CommentCreate
-from ..models.vote import Vote, VoteCreate, VoteType
-from ..models.notification import NotificationCreate, NotificationType
-from ..utils.database import get_db_cursor, get_db_connection
-from ..services.notification_service import NotificationService
+from models.comment import Comment, CommentCreate
+from models.vote import Vote, VoteCreate, VoteType
+from models.notification import NotificationCreate, NotificationType
+from utils.database import get_db_cursor, get_db_connection
+from services.notification_service import NotificationService
 
 
 class OpinionService:
@@ -143,9 +143,12 @@ class OpinionService:
             for m in media_rows:
                 filename = m["file_path"].split("/")[-1]
                 m["filename"] = filename
-                m["url"] = f"uploads/{m['media_type']}/{filename}"
+
+                # Return API endpoint URL instead of file path
+                # Frontend will use this URL to fetch media through API
+                m["url"] = f"/media/files/{m['media_type']}/{filename}"
                 if m["media_type"] == "image":
-                    m["thumbnail_url"] = f"uploads/thumbnails/{filename}"
+                    m["thumbnail_url"] = f"/media/thumbnails/{filename}"
                 else:
                     m["thumbnail_url"] = None
 
@@ -158,8 +161,9 @@ class OpinionService:
     def get_opinions(page: int = 1, page_size: int = 20,
                     status: Optional[OpinionStatus] = None,
                     category_id: Optional[int] = None,
-                    sort_by: Optional[str] = None) -> OpinionList:
-        """Get paginated list of opinions"""
+                    sort_by: Optional[str] = None,
+                    search: Optional[str] = None) -> OpinionList:
+        """Get paginated list of opinions with optional search"""
         offset = (page - 1) * page_size
 
         # Build query
@@ -174,11 +178,17 @@ class OpinionService:
             where_clauses.append("o.category_id = %s")
             params.append(category_id)
 
+        if search:
+            # Search in title and content
+            where_clauses.append("(o.title LIKE %s OR o.content LIKE %s)")
+            search_pattern = f"%{search}%"
+            params.extend([search_pattern, search_pattern])
+
         where_sql = " AND ".join(where_clauses)
 
         SORT_MAP = {
             "created_at": ("o.created_at", "DESC"),
-            "comment_count": ("o.comment_count", "ASC"),
+            "comment_count": ("comment_count", "DESC"),
             "upvotes": ("upvotes", "DESC"),
         }
         sort_column, sort_order = SORT_MAP.get(sort_by, ("o.created_at", "DESC"))
@@ -225,6 +235,143 @@ class OpinionService:
                 page_size=page_size,
                 items=items
             )
+
+    @staticmethod
+    def get_bookmarked_opinions(
+        user_id: int,
+        page: int = 1,
+        page_size: int = 5
+    ) -> OpinionList:
+        """Get paginated list of opinions bookmarked by user"""
+        offset = (page - 1) * page_size
+
+        # 1) 先算總數
+        count_query = """
+            SELECT COUNT(*) AS total
+            FROM collections c
+            JOIN opinions o ON c.opinion_id = o.id
+            WHERE c.user_id = %s AND o.is_public = TRUE
+        """
+
+        # 2) 再拿實際資料
+        data_query = """
+            SELECT 
+                o.*, 
+                u.username,
+                u.full_name AS user_full_name,
+                cat.name AS category_name,
+                -- like 數量
+                (
+                    SELECT COUNT(*) 
+                    FROM votes v 
+                    WHERE v.opinion_id = o.id 
+                      AND v.vote_type = %s
+                ) AS upvotes,
+                -- support 數量
+                (
+                    SELECT COUNT(*) 
+                    FROM votes v 
+                    WHERE v.opinion_id = o.id 
+                      AND v.vote_type = %s
+                ) AS downvotes,
+                -- 留言數
+                (
+                    SELECT COUNT(*) 
+                    FROM comments cmt
+                    WHERE cmt.opinion_id = o.id
+                      AND cmt.is_deleted = FALSE
+                ) AS comment_count
+            FROM collections c
+            JOIN opinions o ON c.opinion_id = o.id
+            JOIN users u ON o.user_id = u.id
+            JOIN categories cat ON o.category_id = cat.id
+            WHERE c.user_id = %s AND o.is_public = TRUE
+            ORDER BY c.created_at DESC
+            LIMIT %s OFFSET %s
+        """
+
+        with get_db_cursor() as cursor:
+            # total
+            cursor.execute(count_query, (user_id,))
+            total = cursor.fetchone()['total']
+
+            # data
+            cursor.execute(
+                data_query,
+                (
+                    VoteType.LIKE.value,      # 'like'
+                    VoteType.DISLIKE.value,    # 'support'
+                    user_id,
+                    page_size,
+                    offset,
+                )
+            )
+            rows = cursor.fetchall()
+
+            # 補 tags
+            for row in rows:
+                cursor.execute(
+                    """
+                    SELECT t.name 
+                    FROM tags t
+                    JOIN opinion_tags ot ON t.id = ot.tag_id
+                    WHERE ot.opinion_id = %s
+                    """,
+                    (row['id'],)
+                )
+                row['tags'] = [r['name'] for r in cursor.fetchall()]
+
+            items = [OpinionWithUser(**row) for row in rows]
+
+            return OpinionList(
+                total=total,
+                page=page,
+                page_size=page_size,
+                items=items
+            )
+
+
+    @staticmethod
+    def get_similar_opinions(opinion_id: int, title: str, content: str, category_id: int, limit: int = 5) -> List[OpinionWithUser]:
+        """Get similar opinions based on category and tags"""
+        query = """
+            SELECT
+                o.id,
+                o.user_id,
+                o.status,
+                o.created_at,
+                o.updated_at,
+                u.username,
+                o.title,
+                o.content,
+                MATCH(o.title, o.content) AGAINST (%s IN NATURAL LANGUAGE MODE) AS ft_score
+            FROM opinions as o
+            JOIN users as u ON o.user_id = u.id
+            WHERE o.category_id = %s AND o.merged_to_id IS NULL
+            AND o.status IN ('approved', 'resolved')
+            AND o.is_public = TRUE
+            AND o.id <> %s
+            ORDER BY ft_score DESC
+            LIMIT %s;
+        """
+
+        search_text = f"{title} {content}"
+
+        with get_db_cursor() as cursor:
+            cursor.execute(query, (search_text, category_id, opinion_id, limit))
+            opinions = cursor.fetchall()
+
+            # Get tags for each opinion
+            for opinion in opinions:
+                cursor.execute(
+                    """SELECT t.name FROM tags t
+                       JOIN opinion_tags ot ON t.id = ot.tag_id
+                       WHERE ot.opinion_id = %s""",
+                    (opinion['id'],)
+                )
+                opinion['tags'] = [row['name'] for row in cursor.fetchall()]
+
+            return [OpinionWithUser(**opinion) for opinion in opinions]
 
     @staticmethod
     def add_comment(opinion_id: int, user_id: int, comment_data: CommentCreate) -> Optional[Comment]:
@@ -299,22 +446,64 @@ class OpinionService:
     
     @staticmethod
     def vote_opinion(opinion_id: int, user_id: int, vote_data: VoteCreate) -> bool:
-        """Vote on an opinion"""
-        query = """
-            INSERT INTO votes (opinion_id, user_id, vote_type)
-            VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE vote_type = VALUES(vote_type)
-        """
-
+        """Vote on an opinion - supports toggle (cancel vote if clicking same type)"""
         try:
             with get_db_cursor() as cursor:
-                cursor.execute(query, (opinion_id, user_id, vote_data.vote_type.value))
-                return True
+                # Check if user has already voted
+                check_query = """
+                    SELECT vote_type FROM votes
+                    WHERE opinion_id = %s AND user_id = %s
+                """
+                cursor.execute(check_query, (opinion_id, user_id))
+                existing_vote = cursor.fetchone()
+
+                if existing_vote:
+                    # If clicking the same vote type, remove the vote (toggle off)
+                    if existing_vote['vote_type'] == vote_data.vote_type.value:
+                        delete_query = """
+                            DELETE FROM votes
+                            WHERE opinion_id = %s AND user_id = %s
+                        """
+                        cursor.execute(delete_query, (opinion_id, user_id))
+                        return True
+                    else:
+                        # Update to new vote type
+                        update_query = """
+                            UPDATE votes
+                            SET vote_type = %s
+                            WHERE opinion_id = %s AND user_id = %s
+                        """
+                        cursor.execute(update_query, (vote_data.vote_type.value, opinion_id, user_id))
+                        return True
+                else:
+                    # Insert new vote
+                    insert_query = """
+                        INSERT INTO votes (opinion_id, user_id, vote_type)
+                        VALUES (%s, %s, %s)
+                    """
+                    cursor.execute(insert_query, (opinion_id, user_id, vote_data.vote_type.value))
+                    return True
         except Exception as e:
             print(f"Error voting: {e}")
             return False
 
-    
+    @staticmethod
+    def get_user_vote(opinion_id: int, user_id: int) -> Optional[str]:
+        """Get user's vote type for an opinion (returns 'like', 'support', or None)"""
+        query = """
+            SELECT vote_type FROM votes
+            WHERE opinion_id = %s AND user_id = %s
+        """
+        try:
+            with get_db_cursor() as cursor:
+                cursor.execute(query, (opinion_id, user_id))
+                result = cursor.fetchone()
+                return result['vote_type'] if result else None
+        except Exception as e:
+            print(f"Error getting user vote: {e}")
+            return None
+
+
     @staticmethod
     def collect_opinion(opinion_id: int, user_id: int) -> bool:
         """Add opinion to user's collection"""
@@ -353,80 +542,88 @@ class OpinionService:
             return row is not None
     
     @staticmethod
-    def get_bookmarked_opinions(
+    def get_user_opinions(
         user_id: int,
         page: int = 1,
-        page_size: int = 5
+        page_size: int = 10,
+        status: Optional[OpinionStatus] = None
     ) -> OpinionList:
-        """Get paginated list of opinions bookmarked by user"""
+        """Get paginated list of opinions created by user"""
         offset = (page - 1) * page_size
 
-        # 1) 先算總數
-        count_query = """
+        # Build where clause
+        where_clauses = ["o.user_id = %s"]
+        params = [user_id]
+
+        if status:
+            where_clauses.append("o.status = %s")
+            params.append(status.value)
+
+        where_sql = " AND ".join(where_clauses)
+
+        # 1) Count total
+        count_query = f"""
             SELECT COUNT(*) AS total
-            FROM collections c
-            JOIN opinions o ON c.opinion_id = o.id
-            WHERE c.user_id = %s AND o.is_public = TRUE
+            FROM opinions o
+            WHERE {where_sql}
         """
 
-        # 2) 再拿實際資料
-        data_query = """
-            SELECT 
-                o.*, 
+        # 2) Get actual data
+        data_query = f"""
+            SELECT
+                o.*,
+                c.name as category_name,
                 u.username,
                 u.full_name AS user_full_name,
-                -- like 數量
+                -- like count
                 (
-                    SELECT COUNT(*) 
-                    FROM votes v 
-                    WHERE v.opinion_id = o.id 
+                    SELECT COUNT(*)
+                    FROM votes v
+                    WHERE v.opinion_id = o.id
                       AND v.vote_type = %s
                 ) AS upvotes,
-                -- support 數量
+                -- support count
                 (
-                    SELECT COUNT(*) 
-                    FROM votes v 
-                    WHERE v.opinion_id = o.id 
+                    SELECT COUNT(*)
+                    FROM votes v
+                    WHERE v.opinion_id = o.id
                       AND v.vote_type = %s
                 ) AS downvotes,
-                -- 留言數
+                -- comment count
                 (
-                    SELECT COUNT(*) 
+                    SELECT COUNT(*)
                     FROM comments cmt
                     WHERE cmt.opinion_id = o.id
                       AND cmt.is_deleted = FALSE
                 ) AS comment_count
-            FROM collections c
-            JOIN opinions o ON c.opinion_id = o.id
+            FROM opinions o
             JOIN users u ON o.user_id = u.id
-            WHERE c.user_id = %s AND o.is_public = TRUE
-            ORDER BY c.created_at DESC
+            LEFT JOIN categories c ON o.category_id = c.id
+            WHERE {where_sql}
+            ORDER BY o.created_at DESC
             LIMIT %s OFFSET %s
         """
 
         with get_db_cursor() as cursor:
             # total
-            cursor.execute(count_query, (user_id,))
+            cursor.execute(count_query, params)
             total = cursor.fetchone()['total']
 
             # data
             cursor.execute(
                 data_query,
-                (
+                [
                     VoteType.LIKE.value,      # 'like'
-                    VoteType.DISLIKE.value,    # 'support'
-                    user_id,
-                    page_size,
-                    offset,
-                )
+                    VoteType.DISLIKE.value,   # 'dislike'
+                ] + params + [page_size, offset]
             )
             rows = cursor.fetchall()
 
-            # 補 tags
+            # Add tags for each opinion
             for row in rows:
                 cursor.execute(
                     """
-                    SELECT t.name 
+                    SELECT t.name
                     FROM tags t
                     JOIN opinion_tags ot ON t.id = ot.tag_id
                     WHERE ot.opinion_id = %s
@@ -444,6 +641,133 @@ class OpinionService:
                 items=items
             )
 
+
+    @staticmethod
+    def update_opinion(opinion_id: int, user_id: int, update_data: OpinionUpdate) -> Optional[OpinionWithUser]:
+        """
+        Update an opinion
+        Only the opinion owner can update their own opinion
+        Returns updated opinion if successful, None otherwise
+        """
+        # Build dynamic update query based on provided fields
+        update_fields = []
+        params = []
+
+        if update_data.title is not None:
+            update_fields.append("title = %s")
+            params.append(update_data.title)
+
+        if update_data.content is not None:
+            update_fields.append("content = %s")
+            params.append(update_data.content)
+
+        if update_data.category_id is not None:
+            update_fields.append("category_id = %s")
+            params.append(update_data.category_id)
+
+        if update_data.region is not None:
+            update_fields.append("region = %s")
+            params.append(update_data.region)
+
+        if update_data.latitude is not None:
+            update_fields.append("latitude = %s")
+            params.append(update_data.latitude)
+
+        if update_data.longitude is not None:
+            update_fields.append("longitude = %s")
+            params.append(update_data.longitude)
+
+        if update_data.status is not None:
+            update_fields.append("status = %s")
+            params.append(update_data.status.value)
+
+        if update_data.is_public is not None:
+            update_fields.append("is_public = %s")
+            params.append(update_data.is_public)
+
+        # If no fields to update, return current opinion
+        if not update_fields:
+            return OpinionService.get_opinion_by_id(opinion_id)
+
+        # Add updated_at timestamp
+        update_fields.append("updated_at = NOW()")
+
+        # Add opinion_id and user_id to params
+        params.extend([opinion_id, user_id])
+
+        query = f"""
+            UPDATE opinions
+            SET {', '.join(update_fields)}
+            WHERE id = %s AND user_id = %s
+        """
+
+        try:
+            with get_db_cursor() as cursor:
+                cursor.execute(query, params)
+
+                if cursor.rowcount == 0:
+                    return None
+
+                # Log history
+                cursor.execute(
+                    """INSERT INTO opinion_history (opinion_id, user_id, action, new_status)
+                    VALUES (%s, %s, 'updated', (SELECT status FROM opinions WHERE id = %s))""",
+                    (opinion_id, user_id, opinion_id)
+                )
+
+            # Return updated opinion
+            return OpinionService.get_opinion_by_id(opinion_id)
+
+        except Exception as e:
+            print(f"Error updating opinion: {e}")
+            return None
+
+    @staticmethod
+    def delete_opinion(opinion_id: int, user_id: int) -> bool:
+        """
+        Delete an opinion (hard delete with CASCADE)
+        Only the opinion owner can delete their own opinion
+        Returns True if deleted, False if not found or unauthorized
+        """
+        if user_id ==0 or user_id ==1:
+            query = """
+                    DELETE FROM opinions
+                    WHERE id = %s 
+                """
+        else:
+            query = """
+                    DELETE FROM opinions
+                    WHERE id = %s AND user_id = %s
+                """
+
+        try:
+            with get_db_cursor() as cursor:
+                cursor.execute(query, (opinion_id, user_id))
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting opinion: {e}")
+            return False
+
+    @staticmethod
+    def delete_comment(comment_id: int, user_id: int) -> bool:
+        """
+        Delete a comment (soft delete)
+        Only the comment owner can delete their own comment
+        Returns True if deleted, False if not found or unauthorized
+        """
+        query = """
+            UPDATE comments
+            SET is_deleted = TRUE
+            WHERE id = %s AND user_id = %s AND is_deleted = FALSE
+        """
+
+        try:
+            with get_db_cursor() as cursor:
+                cursor.execute(query, (comment_id, user_id))
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting comment: {e}")
+            return False
 
     @staticmethod
     def _add_tags(cursor, opinion_id: int, tag_names: List[str]):

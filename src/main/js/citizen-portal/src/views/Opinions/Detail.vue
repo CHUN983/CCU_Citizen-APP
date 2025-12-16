@@ -37,7 +37,6 @@
           v-if="opinion.media && opinion.media.length"
           class="media-section"
         >
-          <h3 class="media-title">相關多媒體</h3>
           <div class="media-grid">
             <template
               v-for="m in opinion.media"
@@ -96,40 +95,61 @@
         <!-- Voting Section -->
         <el-divider />
         <div class="voting-section">
-          <div class="vote-buttons">
-            <el-button
-              :type="opinion.user_vote === 'up' ? 'success' : 'default'"
-              :disabled="!isLoggedIn"
-              @click="handleVote('like')"
-            >
-              <el-icon><CaretTop /></el-icon>
-              支持 ({{ opinion.upvotes }})
-            </el-button>
-            <el-button
-              :type="opinion.user_vote === 'down' ? 'danger' : 'default'"
-              :disabled="!isLoggedIn"
-              @click="handleVote('support')"
-            >
-              <el-icon><CaretBottom /></el-icon>
-              反對 ({{ opinion.downvotes }})
-            </el-button>
-            <el-button
-              :type="opinion.is_bookmarked ? 'warning' : 'default'"
-              :disabled="!isLoggedIn"
-              @click="handleBookmark"
-            >
-              <el-icon><Star /></el-icon>
-              {{ opinion.is_bookmarked ? '已收藏' : '收藏' }}
-            </el-button>
-          </div>
+          <!-- 審核中或已拒絕的意見提示 -->
           <el-alert
-            v-if="!isLoggedIn"
-            type="info"
+            v-if="opinion.status === 'pending'"
+            type="warning"
             :closable="false"
             show-icon
           >
-            請先<el-link type="primary" @click="$router.push('/login')">登入</el-link>後才能投票或收藏
+            此意見正在審核中，暫時無法進行投票、收藏或留言
           </el-alert>
+          <el-alert
+            v-else-if="opinion.status === 'rejected'"
+            type="error"
+            :closable="false"
+            show-icon
+          >
+            此意見已被拒絕，無法進行投票、收藏或留言
+          </el-alert>
+
+          <!-- 已通過的意見可以互動 -->
+          <template v-else-if="opinion.status === 'approved'">
+            <div class="vote-buttons">
+              <el-button
+                :type="opinion.user_vote === 'like' ? 'success' : 'default'"
+                :disabled="!isLoggedIn"
+                @click="handleVote('like')"
+              >
+                <el-icon><CaretTop /></el-icon>
+                {{ opinion.user_vote === 'like' ? '已支持' : '支持' }} ({{ opinion.upvotes }})
+              </el-button>
+              <el-button
+                :type="opinion.user_vote === 'support' ? 'danger' : 'default'"
+                :disabled="!isLoggedIn"
+                @click="handleVote('support')"
+              >
+                <el-icon><CaretBottom /></el-icon>
+                {{ opinion.user_vote === 'support' ? '已反對' : '反對' }} ({{ opinion.downvotes }})
+              </el-button>
+              <el-button
+                :type="opinion.is_bookmarked ? 'warning' : 'default'"
+                :disabled="!isLoggedIn"
+                @click="handleBookmark"
+              >
+                <el-icon><Star /></el-icon>
+                {{ opinion.is_bookmarked ? '已收藏' : '收藏' }}
+              </el-button>
+            </div>
+            <el-alert
+              v-if="!isLoggedIn"
+              type="info"
+              :closable="false"
+              show-icon
+            >
+              請先<el-link type="primary" @click="$router.push('/login')">登入</el-link>後才能投票或收藏
+            </el-alert>
+          </template>
         </div>
       </el-card>
 
@@ -142,7 +162,25 @@
         </template>
 
         <!-- Comment Input -->
-        <div v-if="isLoggedIn" class="comment-input-section">
+        <div v-if="opinion && opinion.status === 'pending'" class="comment-disabled-section">
+          <el-alert
+            type="warning"
+            :closable="false"
+            show-icon
+          >
+            此意見正在審核中，暫時無法發表留言
+          </el-alert>
+        </div>
+        <div v-else-if="opinion && opinion.status === 'rejected'" class="comment-disabled-section">
+          <el-alert
+            type="error"
+            :closable="false"
+            show-icon
+          >
+            此意見已被拒絕，無法發表留言
+          </el-alert>
+        </div>
+        <div v-else-if="isLoggedIn && opinion && opinion.status === 'approved'" class="comment-input-section">
           <el-input
             v-model="newComment"
             type="textarea"
@@ -270,13 +308,22 @@ const handleVote = async (voteType) => {
   }
 
   try {
+    const currentVote = opinion.value.user_vote
+    const isCancellingVote = currentVote === voteType
+
     await opinionStore.voteOpinion(opinionId.value, voteType)
-    ElMessage.success('投票成功')
+
+    if (isCancellingVote) {
+      ElMessage.success('已取消投票')
+    } else {
+      const voteText = voteType === 'like' ? '支持' : '反對'
+      ElMessage.success(`${voteText}成功`)
+    }
 
     // Refresh opinion data
     await fetchOpinion()
   } catch (error) {
-    ElMessage.error(error.detail || '投票失敗')
+    ElMessage.error(error.detail || '操作失敗')
   }
 }
 

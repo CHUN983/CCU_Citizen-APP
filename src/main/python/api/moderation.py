@@ -6,10 +6,10 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
-from ..services.moderation_service import ModerationService
-from ..models.user import UserRole
-from ..api.auth import get_current_user
-from ..models.opinion_history import OpinionHistoryList
+from services.moderation_service import ModerationService
+from models.user import UserRole
+from api.auth import get_current_user
+from models.opinion_history import OpinionHistoryList
 
 router = APIRouter(prefix="/admin", tags=["Moderation"])
 
@@ -79,6 +79,10 @@ async def merge_opinions(
     moderator: dict = Depends(require_moderator)
 ):
     """Merge opinion into another"""
+    # Validate: cannot merge opinion with itself
+    if opinion_id == request.target_id:
+        raise HTTPException(status_code=400, detail="Cannot merge opinion with itself")
+
     success = ModerationService.merge_opinions(
         opinion_id, request.target_id, moderator["user_id"]
     )

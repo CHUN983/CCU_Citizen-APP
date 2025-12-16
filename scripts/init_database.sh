@@ -11,13 +11,15 @@ if [ ! -f ".env" ]; then
 fi
 
 # Load environment variables
-export $(cat .env | grep -v '^#' | xargs)
+set -a
+source .env
+set +a
 
 echo "📊 Creating database if not exists..."
 mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p${DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-echo "📋 Running schema initialization..."
-mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < src/main/resources/config/schema.sql
+echo "📋 Running schema initialization (完整版)..."
+mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < src/main/resources/config/schema_complete.sql
 
 echo ""
 echo "✅ Database initialized successfully!"

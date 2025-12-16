@@ -1,0 +1,8 @@
+dist
+node_modules
+coverage
+android
+ios
+.capacitor
+*.config.js
+*.config.cjs

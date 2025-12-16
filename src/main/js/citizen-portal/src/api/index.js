@@ -15,10 +15,12 @@ export const opinionAPI = {
   update: (id, data) => axios.put(`/opinions/${id}`, data),
   delete: (id) => axios.delete(`/opinions/${id}`),
   vote: (id, voteType) => axios.post(`/opinions/${id}/vote`, { vote_type: voteType }),
+  getVoteStatus: (id) => axios.get(`/opinions/${id}/vote`),
   bookmark: (id) => axios.post(`/opinions/${id}/collect`),
   getBookmarkStatus: (id) => axios.get(`/opinions/${id}/collect`),
   getBookmarked: (params) => axios.get('/opinions/collect', { params }),
-  unbookmark: (id) => axios.delete(`/opinions/${id}/collect`)
+  unbookmark: (id) => axios.delete(`/opinions/${id}/collect`),
+  getMyOpinions: (params) => axios.get('/opinions/my-opinions', { params })
 }
 
 // Comment APIs

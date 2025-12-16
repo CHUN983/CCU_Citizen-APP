@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 開發環境：信任所有證書（包含自簽名） -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- 信任系統預設的 CA -->
+            <certificates src="system" />
+            <!-- 信任使用者安裝的證書（包含自簽名） -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- 開發環境特殊配置：完全信任 localhost 和 10.0.2.2 -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+
+    <!-- 針對開發伺服器的特殊配置 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">140.123.105.199</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Android 模擬器：信任 10.0.2.2（主機）的自簽名證書 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <trust-anchors>
+            <!-- 信任應用程式內建的伺服器證書 -->
+            <certificates src="@raw/server_cert" />
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

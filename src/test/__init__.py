@@ -1,0 +1,3 @@
+"""
+Common test package initializer.
+"""

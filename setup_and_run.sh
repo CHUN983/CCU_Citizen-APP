@@ -62,7 +62,9 @@ else
 fi
 
 # 載入環境變數
-export $(cat .env | grep -v '^#' | xargs)
+set -a
+source .env
+set +a
 
 # 步驟 5: 檢查 MySQL
 echo ""
@@ -82,7 +84,7 @@ if command -v mysql &> /dev/null; then
             echo -e "${YELLOW}⚠️  資料庫 '${DB_NAME}' 不存在，正在創建...${NC}"
             mysql -h${DB_HOST} -u${DB_USER} -p${DB_PASSWORD} -e "CREATE DATABASE ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
             echo "   匯入資料表結構..."
-            mysql -h${DB_HOST} -u${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < src/main/resources/config/schema.sql
+            mysql -h${DB_HOST} -u${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < src/main/resources/config/schema_complete.sql
             echo -e "${GREEN}✅ 資料庫已初始化${NC}"
         else
             echo -e "${GREEN}✅ 資料庫 '${DB_NAME}' 已存在${NC}"

@@ -5,12 +5,12 @@ Opinion API routes
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from typing import Optional, List
 
-from ..models.opinion import Opinion, OpinionCreate, OpinionList, OpinionStatus, OpinionWithUser
-from ..models.comment import Comment, CommentCreate
-from ..models.vote import VoteCreate
-from ..services.opinion_service import OpinionService
-from ..services.ai_content_moderation_service import AIContentModerationService
-from ..api.auth import get_current_user
+from models.opinion import Opinion, OpinionCreate, OpinionUpdate, OpinionList, OpinionStatus, OpinionWithUser
+from models.comment import Comment, CommentCreate
+from models.vote import VoteCreate
+from services.opinion_service import OpinionService
+from services.ai_content_moderation_service import AIContentModerationService
+from api.auth import get_current_user
 import threading
 
 router = APIRouter(prefix="/opinions", tags=["Opinions"])
@@ -39,7 +39,7 @@ async def create_opinion(
 
     if ai_moderation_enabled:
         # 使用背景線程異步執行AI審核(不阻塞response)
-        from ..utils.async_moderation import sync_process_opinion_moderation
+        from utils.async_moderation import sync_process_opinion_moderation
 
         thread = threading.Thread(
             target=sync_process_opinion_moderation,
@@ -65,10 +65,11 @@ async def get_opinions(
     page_size: int = Query(20, ge=1, le=100),
     status: Optional[OpinionStatus] = None,
     category_id: Optional[int] = None,
-    sort_by: Optional[str] = None
+    sort_by: Optional[str] = None,
+    search: Optional[str] = None
 ):
-    """Get paginated list of opinions"""
-    return OpinionService.get_opinions(page, page_size, status, category_id, sort_by)
+    """Get paginated list of opinions with optional search"""
+    return OpinionService.get_opinions(page, page_size, status, category_id, sort_by, search)
 
 #固定路徑要放在參數路徑前面，否則會被當成參數處理
 @router.get("/collect", response_model=OpinionList)
@@ -84,6 +85,21 @@ async def get_bookmarked_opinions(
         page_size=page_size
     )
 
+@router.get("/my-opinions", response_model=OpinionList)
+async def get_my_opinions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    status: Optional[OpinionStatus] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get paginated list of opinions created by current user"""
+    return OpinionService.get_user_opinions(
+        user_id=current_user["user_id"],
+        page=page,
+        page_size=page_size,
+        status=status
+    )
+
 @router.get("/{opinion_id}", response_model=OpinionWithUser)
 async def get_opinion(opinion_id: int):
     """Get opinion by ID"""
@@ -93,6 +109,24 @@ async def get_opinion(opinion_id: int):
         raise HTTPException(status_code=404, detail="Opinion not found")
 
     return opinion
+
+
+@router.put("/{opinion_id}", response_model=OpinionWithUser, status_code=200)
+async def update_opinion(
+    opinion_id: int,
+    update_data: OpinionUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update an opinion (only by owner)"""
+    updated_opinion = OpinionService.update_opinion(opinion_id, current_user["user_id"], update_data)
+
+    if not updated_opinion:
+        raise HTTPException(
+            status_code=404,
+            detail="意見不存在或您無權編輯此意見"
+        )
+
+    return updated_opinion
 
 
 @router.post("/{opinion_id}/comments", response_model=Comment, status_code=201)
@@ -129,6 +163,37 @@ async def get_comments(
     comments = OpinionService.get_comments_by_opinion_id(opinion_id, limit)
 
     return comments
+
+
+@router.delete("/{opinion_id}/comments/{comment_id}", status_code=200)
+async def delete_comment(
+    opinion_id: int,
+    comment_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a comment (only by comment owner)"""
+    # Check if opinion exists
+    opinion = OpinionService.get_opinion_by_id(opinion_id)
+    if not opinion:
+        raise HTTPException(status_code=404, detail="Opinion not found")
+
+    # Check if comment exists and belongs to opinion
+    comment = OpinionService.get_comment_by_id(comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    if comment.opinion_id != opinion_id:
+        raise HTTPException(status_code=400, detail="Comment does not belong to this opinion")
+
+    success = OpinionService.delete_comment(comment_id, current_user["user_id"])
+
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail="評論不存在或您無權刪除此評論"
+        )
+
+    return {"message": "評論已成功刪除"}
 
 
 @router.post("/{opinion_id}/vote", status_code=200)
@@ -172,6 +237,20 @@ async def collect_opinion(
 
     return {"message": "Opinion collected successfully"}
 
+@router.get("/{opinion_id}/vote")
+async def get_vote_status(
+    opinion_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get current user's vote status for this opinion"""
+    # 確認意見存在
+    opinion = OpinionService.get_opinion_by_id(opinion_id)
+    if not opinion:
+        raise HTTPException(status_code=404, detail="Opinion not found")
+
+    vote_type = OpinionService.get_user_vote(opinion_id, current_user["user_id"])
+    return {"vote_type": vote_type}
+
 @router.get("/{opinion_id}/collect")
 async def get_collect_status(
     opinion_id: int,
@@ -198,3 +277,19 @@ async def uncollect_opinion(
         raise HTTPException(status_code=404, detail="Collection not found")
 
     return {"message": "Opinion removed from collection"}
+
+@router.delete("/{opinion_id}", status_code=200)
+async def delete_opinion(
+    opinion_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete user's own opinion"""
+    success = OpinionService.delete_opinion(opinion_id, current_user["user_id"])
+
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail="意見不存在或您無權刪除此意見"
+        )
+
+    return {"message": "意見已成功刪除"}

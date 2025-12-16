@@ -9,7 +9,8 @@ import time
 import base64
 from typing import Dict, Optional
 from pathlib import Path
-from ..services.ai_content_moderation_service import ModerationDecision, AIContentModerationService, ModerationConfig
+from services.ai_content_moderation_service import ModerationDecision, AIContentModerationService, ModerationConfig
+from utils.api_retry import exponential_backoff, OPENAI_RETRY_CONFIG
 
 
 class AIMediaModerationService:
@@ -39,9 +40,11 @@ class AIMediaModerationService:
         return mime_types.get(ext, 'image/jpeg')
 
     @staticmethod
+    @exponential_backoff(**OPENAI_RETRY_CONFIG)
     def _call_openai_vision_api(image_path: str, is_url: bool = False) -> Dict:
         """
         調用OpenAI Vision API檢測圖片內容
+        使用指數退避重試機制處理速率限制
         """
         api_key = ModerationConfig.openai_api_key
         model = AIContentModerationService._get_config('openai_model', 'gpt-4o-mini')
@@ -182,13 +185,26 @@ class AIMediaModerationService:
                 }
 
         except Exception as e:
-            print(f"Error calling OpenAI Vision API: {e}")
+            import requests
+            # HTTP 錯誤（包括 429 速率限制）
+            if isinstance(e, requests.exceptions.HTTPError) and hasattr(e, 'response') and e.response is not None:
+                status_code = e.response.status_code
+                if status_code == 429:
+                    print(f"Error: OpenAI API rate limit exceeded after retries: {e}")
+                    error_msg = "AI 圖片審核服務暫時繁忙，請稍後重試"
+                else:
+                    print(f"Error: OpenAI API HTTP error {status_code}: {e}")
+                    error_msg = f"AI 圖片審核服務錯誤（HTTP {status_code}）"
+            else:
+                print(f"Error calling OpenAI Vision API: {e}")
+                error_msg = "AI 圖片審核服務發生錯誤"
+
             return {
                 'is_safe': True,
                 'confidence': 50.0,
                 'issues': [],
                 'description': '',
-                'error': str(e)
+                'error': error_msg
             }
 
     @staticmethod

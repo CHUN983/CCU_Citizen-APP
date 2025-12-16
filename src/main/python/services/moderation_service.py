@@ -4,11 +4,12 @@ Moderation service for admin operations
 
 from typing import Optional, List
 from datetime import datetime
-from ..models.opinion import OpinionStatus
-from ..models.notification import NotificationCreate, NotificationType
-from ..models.opinion_history import OpinionHistoryList, OpinionHistoryItem
-from ..utils.database import get_db_cursor
-from ..services.notification_service import NotificationService
+from models.opinion import OpinionStatus
+from models.notification import NotificationCreate, NotificationType
+from models.opinion_history import OpinionHistoryList, OpinionHistoryItem
+from utils.database import get_db_cursor
+from services.notification_service import NotificationService
+from services.ai_content_moderation_service import AIContentModerationService
 
 
 class ModerationService:
@@ -17,10 +18,27 @@ class ModerationService:
     @staticmethod
     def approve_opinion(opinion_id: int, moderator_id: int) -> bool:
         """Approve an opinion"""
-        return ModerationService._change_status(
+
+        success = ModerationService._change_status(
             opinion_id, moderator_id, OpinionStatus.APPROVED,
             "Opinion approved", "Your opinion has been approved and is now public"
         )
+
+
+
+        if success:
+            merge_id, merge_info = AIContentModerationService.pick_merge_opinions(opinion_id)
+
+        if merge_id is not None:
+            ModerationService.merge_opinions(opinion_id, merge_id, moderator_id)
+            print("[MERGE] approve_opinion: merge_id =", merge_id, "merge_info =", merge_info)
+        else:
+            print("[MERGE] approve_opinion: no similar opinion found to merge")
+
+
+
+        
+        return success
 
     @staticmethod
     def reject_opinion(opinion_id: int, moderator_id: int, reason: str = "") -> bool:
@@ -36,7 +54,7 @@ class ModerationService:
         """Merge source opinion into target opinion"""
         query = """
             UPDATE opinions
-            SET merged_to_id = %s, status = 'merged'
+            SET merged_to_id = %s
             WHERE id = %s
         """
 

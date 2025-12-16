@@ -30,9 +30,9 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
+# package-lock.json - COMMENTED OUT: 需要提交以支援 CI/CD 的 npm ci 命令
 yarn.lock
-vite.config.js
+# vite.config.js - COMMENTED OUT: 配置文件應該被提交
 
 # Java
 *.class
@@ -82,3 +82,11 @@ dist/
 # Configuration (uncomment if sensitive)
 .env
 # config/secrets.*
+
+# SSL/TLS Certificates (NEVER commit!)
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+selfsigned.*
