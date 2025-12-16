@@ -249,8 +249,8 @@ jobs:
 
       - name: 🗄️ Setup test database
         run: |
-          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/schema.sql
-          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/update_roles.sql
+          # 使用完整的 schema 文件（包含所有表結構和 AI 審核功能）
+          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/schema_complete.sql
         env:
           MYSQL_PWD: test_password
 
@@ -354,8 +354,8 @@ jobs:
 
       - name: 🗄️ Setup database
         run: |
-          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/schema.sql
-          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/update_roles.sql
+          # 使用完整的 schema 文件（包含所有表結構和 AI 審核功能）
+          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/schema_complete.sql
 
       - name: 🚀 Start FastAPI server
         run: |
@@ -442,8 +442,8 @@ jobs:
 
       - name: 🗄️ Setup database
         run: |
-          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/schema.sql
-          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/update_roles.sql
+          # 使用完整的 schema 文件（包含所有表結構和 AI 審核功能）
+          mysql -h 127.0.0.1 -uroot -ptest_password citizen_app_test < src/main/resources/config/schema_complete.sql
 
       - name: 🚀 Start FastAPI server
         run: |

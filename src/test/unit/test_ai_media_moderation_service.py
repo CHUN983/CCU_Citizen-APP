@@ -272,15 +272,6 @@ class TestOpenAIVisionAPI:
         assert result['confidence'] == 0.0
         assert 'error' in result
 
-    @patch('services.ai_media_moderation_service.ModerationConfig.openai_api_key', '')
-    def test_vision_api_no_api_key(self, sample_image_path):
-        """TC-MEDIA-018: 無 API Key 配置"""
-        result = AIMediaModerationService._call_openai_vision_api(sample_image_path)
-
-        assert result['is_safe'] is True
-        assert 'error' in result
-        assert 'API key not configured' in result['error']
-
     @patch('requests.post')
     @patch.object(AIMediaModerationService, '_encode_image_to_base64')
     def test_vision_api_invalid_json_response(
@@ -302,6 +293,19 @@ class TestOpenAIVisionAPI:
 
         # 應該有錯誤處理
         assert 'error' in result or result['is_safe'] is True
+
+
+# ==================== 獨立測試: API Key 未配置 ====================
+
+@pytest.mark.no_db
+@patch('services.ai_media_moderation_service.ModerationConfig.openai_api_key', '')
+def test_vision_api_no_api_key(sample_image_path):
+    """TC-MEDIA-018: 無 API Key 配置"""
+    result = AIMediaModerationService._call_openai_vision_api(sample_image_path)
+
+    assert result['is_safe'] is True
+    assert 'error' in result
+    assert 'API key not configured' in result['error']
 
 
 # ==================== 測試類別 3: 圖片審核流程測試 ====================

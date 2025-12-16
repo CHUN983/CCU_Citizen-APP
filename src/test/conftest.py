@@ -66,32 +66,28 @@ def test_db_connection_pool():
             "-e", f"CREATE DATABASE IF NOT EXISTS {TEST_DB_CONFIG['database']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
         ], check=True, capture_output=True, text=True)
 
-        # 依序套用 schema 與 AI moderation 擴充
+        # 使用完整的 schema 文件（包含所有表結構和 AI 審核功能）
         config_dir = project_root / "src/main/resources/config"
-        sql_files = [
-            config_dir / "schema.sql",
-            config_dir / "add_ai_moderation_safe.sql"
-        ]
+        schema_file = config_dir / "schema_complete.sql"
 
-        for sql_file in sql_files:
-            if not sql_file.exists():
-                raise FileNotFoundError(f"SQL file not found: {sql_file}")
+        if not schema_file.exists():
+            raise FileNotFoundError(f"SQL file not found: {schema_file}")
 
-            with open(sql_file, 'rb') as f:
-                result = subprocess.run([
-                    "mysql",
-                    "-h", TEST_DB_CONFIG["host"],
-                    "-P", str(TEST_DB_CONFIG["port"]),
-                    "-u", TEST_DB_CONFIG["user"],
-                    f"-p{TEST_DB_CONFIG['password']}",
-                    "--force",  # 忽略重複鍵錯誤等提醒
-                    TEST_DB_CONFIG["database"]
-                ], stdin=f, capture_output=True, text=True)
+        with open(schema_file, 'rb') as f:
+            result = subprocess.run([
+                "mysql",
+                "-h", TEST_DB_CONFIG["host"],
+                "-P", str(TEST_DB_CONFIG["port"]),
+                "-u", TEST_DB_CONFIG["user"],
+                f"-p{TEST_DB_CONFIG['password']}",
+                "--force",  # 忽略重複鍵錯誤等提醒
+                TEST_DB_CONFIG["database"]
+            ], stdin=f, capture_output=True, text=True)
 
-            if result.returncode != 0:
-                stderr_lower = result.stderr.lower()
-                if "duplicate entry" not in stderr_lower and "already exists" not in stderr_lower:
-                    print(f"Schema execution warnings/errors ({sql_file.name}):\n{result.stderr}")
+        if result.returncode != 0:
+            stderr_lower = result.stderr.lower()
+            if "duplicate entry" not in stderr_lower and "already exists" not in stderr_lower:
+                print(f"Schema execution warnings/errors ({schema_file.name}):\n{result.stderr}")
 
         print(f"✅ Test database '{TEST_DB_CONFIG['database']}' initialized successfully")
 
