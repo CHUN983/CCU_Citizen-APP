@@ -137,7 +137,7 @@ class TestOpinionPublishingE2E:
 
 @pytest.mark.system
 @pytest.mark.e2e
-@pytest.mark.skip(reason="需要先設置測試數據庫和認證")
+# @pytest.mark.skip(reason="需要先設置測試數據庫和認證")  # 暫時移除以進行測試
 class TestOpinionListingE2E:
     """意見列表查詢端到端測試"""
 
@@ -152,7 +152,8 @@ class TestOpinionListingE2E:
         assert page1_response.status_code == 200
 
         page1_data = page1_response.json()
-        assert "opinions" in page1_data
+        # API 實際回傳的是 "items" 而不是 "opinions"
+        assert "items" in page1_data
         assert "total" in page1_data
         assert "page" in page1_data
 
@@ -163,7 +164,7 @@ class TestOpinionListingE2E:
 
             page2_data = page2_response.json()
             # 驗證不同頁的數據不同
-            assert page1_data["opinions"][0]["id"] != page2_data["opinions"][0]["id"]
+            assert page1_data["items"][0]["id"] != page2_data["items"][0]["id"]
 
     def test_opinion_filtering_by_category(self, authenticated_client):
         """
@@ -178,7 +179,8 @@ class TestOpinionListingE2E:
         assert response.status_code == 200
 
         data = response.json()
-        opinions = data.get("opinions", [])
+        # API 實際回傳的是 "items" 而不是 "opinions"
+        opinions = data.get("items", [])
 
         # 驗證所有返回的意見都屬於指定分類
         for opinion in opinions:
@@ -192,19 +194,21 @@ class TestOpinionListingE2E:
         """
         search_term = "test"
 
-        # 搜索意見
-        response = authenticated_client.get(f"/opinions/search?q={search_term}")
+        # 搜索意見 - 使用主要的 /opinions 端點的 search 參數
+        response = authenticated_client.get(f"/opinions?search={search_term}")
         assert response.status_code == 200
 
         data = response.json()
-        opinions = data.get("opinions", [])
+        # API 實際回傳的是 "items" 而不是 "opinions"
+        opinions = data.get("items", [])
 
-        # 驗證搜索結果包含搜索詞
-        for opinion in opinions:
-            assert (
-                search_term.lower() in opinion["title"].lower() or
-                search_term.lower() in opinion["content"].lower()
-            ), "搜索結果應包含搜索詞"
+        # 驗證搜索結果包含搜索詞（如果有結果）
+        if opinions:
+            for opinion in opinions:
+                assert (
+                    search_term.lower() in opinion["title"].lower() or
+                    search_term.lower() in opinion["content"].lower()
+                ), "搜索結果應包含搜索詞"
 
 
 @pytest.mark.system

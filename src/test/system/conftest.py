@@ -20,7 +20,7 @@ def fastapi_server():
     """
     # 啟動 FastAPI 伺服器
     process = subprocess.Popen(
-        ["python", "-m", "uvicorn", "src.main.python.core.app:app", "--host", "0.0.0.0", "--port", "8001"],
+        ["python3", "-m", "uvicorn", "src.main.python.core.app:app", "--host", "0.0.0.0", "--port", "8001"],
         cwd=Path(__file__).parent.parent.parent.parent,
         env={"PYTHONPATH": "src/main/python"}
     )
