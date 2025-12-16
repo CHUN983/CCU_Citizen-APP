@@ -92,7 +92,7 @@
                   {{ formatDate(row.created_at) }}
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="280" fixed="right">
+              <el-table-column label="操作" width="360" fixed="right">
                 <template #default="{ row }">
                   <el-button
                     size="small"
@@ -100,6 +100,14 @@
                     @click.stop="handleView(row.id)"
                   >
                     查看
+                  </el-button>
+                  <el-button
+                    size="small"
+                    type="danger"
+                    plain
+                    @click.stop="handleDelete(row.id, row.title)"
+                  >
+                    刪除
                   </el-button>
                   <el-button
                     v-if="row.status === 'pending'"
@@ -237,6 +245,28 @@ const handleReject = async (id) => {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('Reject failed:', error)
+    }
+  }
+}
+
+const handleDelete = async (id, title) => {
+  try {
+    await ElMessageBox.confirm(
+      `確定要刪除意見「${title}」嗎？此操作無法復原，且會同時刪除所有相關的留言和投票。`,
+      '刪除意見',
+      {
+        confirmButtonText: '確定刪除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await opinionAPI.deleteOpinion(id)
+    ElMessage.success('意見已成功刪除')
+    fetchOpinions()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.detail || '刪除意見失敗')
     }
   }
 }

@@ -37,6 +37,10 @@ export const opinionAPI = {
   // 更新分類
   updateCategory(id, categoryId) {
     return request.put(`/admin/opinions/${id}/category`, { category_id: categoryId })
+  },
+  // 刪除意見
+  deleteOpinion(id) {
+    return request.delete(`/opinions/${id}`)
   }
 }
 
@@ -61,4 +65,3 @@ export const adminDashboardAPI = {
   getStats: async () => request.get('/admin/dashboard/stats'),
   getHistoryList: async (params) => request.get('/admin/history', { params })
 }
-
